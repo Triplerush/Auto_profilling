@@ -1,0 +1,38 @@
+# Variables de entorno (CRÍTICO)
+.env
+.env.*
+*.env
+
+# Entornos virtuales
+venv/
+env/
+.venv/
+/.venv/
+
+# Archivos de Python / Cachés
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Logs e historial
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+.tox/
+
+# IDEs, Editores y SO
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
