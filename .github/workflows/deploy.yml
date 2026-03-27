@@ -19,22 +19,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Copiar archivos estáticos al VPS (Ruta correcta)
-      - name: Copiar archivos al VPS vía SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: "docker-compose.yml,frontend/"
-          target: "/home/deployer/auto-profiling"
-
-      # 2. Obtener el nombre del repo en minúsculas
+      # 1. Obtener el nombre del repo en minúsculas
       - name: Lowercase Repository Name
-        id: lowercase_repo
-        run: echo "IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        run: echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
-      # 3. Login en GitHub Container Registry
+      # 2. Login en GitHub Container Registry
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -42,15 +31,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 4. Construir y Subir el Backend a GHCR
+      # 3. Construir y subir imagen del Backend
       - name: Build and Push Backend Image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./backend
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          tags: ${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_backend:latest
 
-      # 5. Entrar por SSH y levantar toda la orquesta
+      # 4. Construir y subir imagen del Frontend
+      - name: Build and Push Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_frontend:latest
+
+      # 5. Deploy al VPS via SSH (sin SCP)
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -58,19 +55,39 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -e
+
+            DEPLOY_DIR="/home/${{ secrets.VPS_USERNAME }}/auto-profiling"
+            REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+
+            # Crear carpeta de deploy
+            mkdir -p "$DEPLOY_DIR"
+
+            # Clonar repo temporal para extraer configs
+            TMPDIR=$(mktemp -d)
+            git clone --depth 1 "$REPO_URL" "$TMPDIR"
+
+            # Copiar solo los archivos de orquestación
+            cp "$TMPDIR/docker-compose.yml" "$DEPLOY_DIR/"
+            cp -r "$TMPDIR/proxy" "$DEPLOY_DIR/"
+
+            # Eliminar clon temporal
+            rm -rf "$TMPDIR"
+
+            # Login a GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u "${{ github.actor }}" --password-stdin
-            
-            # ¡CORREGIDO! Navegar a la carpeta correcta
-            cd /home/deployer/auto-profiling
-            
-            # Exportar las variables mágicas para que docker-compose las lea
-            export IMAGE_PLACEHOLDER="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-            export FRONTEND_PORT=80
-            
-            # Bajar contenedores huérfanos, actualizar imágenes y levantar todo
+
+            # Navegar al directorio de deploy
+            cd "$DEPLOY_DIR"
+
+            # Configurar imágenes inmutables
+            export BACKEND_IMAGE="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_backend:latest"
+            export FRONTEND_IMAGE="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_frontend:latest"
+
+            # Desplegar
             docker compose down --remove-orphans || true
             docker compose pull
             docker compose up -d
-            
-            # Limpieza del disco duro
+
+            # Limpieza del disco
             docker image prune -a -f

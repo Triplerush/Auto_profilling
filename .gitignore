@@ -30,6 +30,10 @@ htmlcov/
 .coverage
 .tox/
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
 # IDEs, Editores y SO
 .vscode/
 .idea/

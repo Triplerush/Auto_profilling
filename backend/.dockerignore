@@ -1,8 +1,11 @@
 .git
 .github
 .gitignore
-.dockerignore
 *.md
+__pycache__
+*.pyc
+.venv
+venv
 .vscode
 .idea
 .env
