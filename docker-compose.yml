@@ -1,6 +1,6 @@
 services:
   backend:
-    build: .
+    image: ${IMAGE_PLACEHOLDER:-ghcr.io/tu_usuario/auto_profilling:latest}
     container_name: profiling_backend
     restart: unless-stopped
     ports:

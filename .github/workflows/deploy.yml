@@ -19,11 +19,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # 1. Copiar archivos estáticos al VPS (¡La forma segura!)
+      - name: Copiar archivos al VPS vía SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "docker-compose.yml,frontend/"
+          target: "/opt/auto-profiling"
+
+      # 2. Obtener el nombre del repo en minúsculas
       - name: Lowercase Repository Name
         id: lowercase_repo
-        run: |
-          echo "IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        run: echo "IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
+      # 3. Login en GitHub Container Registry
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -31,13 +42,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image
+      # 4. Construir y Subir el Backend a GHCR
+      - name: Build and Push Backend Image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
+      # 5. Entrar por SSH y levantar toda la orquesta
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -45,105 +58,19 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # 1. Definir variables
-            IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-            DEPLOY_DIR="/opt/auto-profiling"
-
-            # 2. Login en GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u "${{ github.actor }}" --password-stdin
-
-            # 3. Descargar la imagen recién construida
-            docker pull $IMAGE
-
-            # 4. Crear directorio de deploy y copiar compose
-            mkdir -p $DEPLOY_DIR/frontend
-
-            # 5. Generar docker-compose en el servidor
-            cat > $DEPLOY_DIR/docker-compose.yml << 'COMPOSE_EOF'
-            services:
-              backend:
-                image: IMAGE_PLACEHOLDER
-                container_name: profiling_backend
-                restart: unless-stopped
-                ports:
-                  - "8001:8000"
-                environment:
-                  - PROFILING_REDIS_URL=redis://redis:6379/0
-                volumes:
-                  - profiling_data:/tmp/profiling
-                depends_on:
-                  redis:
-                    condition: service_healthy
-
-              redis:
-                image: redis:7-alpine
-                container_name: profiling_redis
-                restart: unless-stopped
-                volumes:
-                  - redis_data:/data
-                healthcheck:
-                  test: ["CMD", "redis-cli", "ping"]
-                  interval: 5s
-                  timeout: 3s
-                  retries: 5
-
-              frontend:
-                image: nginx:alpine
-                container_name: profiling_frontend
-                restart: unless-stopped
-                ports:
-                  - "80:80"
-                volumes:
-                  - ./frontend:/usr/share/nginx/html:ro
-                  - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-                depends_on:
-                  - backend
-
-            volumes:
-              profiling_data:
-              redis_data:
-            COMPOSE_EOF
-
-            # Reemplazar placeholder con la imagen real
-            sed -i "s|IMAGE_PLACEHOLDER|$IMAGE|g" $DEPLOY_DIR/docker-compose.yml
-
-            # 6. Copiar frontend estático (solo los archivos necesarios)
-            cat > $DEPLOY_DIR/frontend/nginx.conf << 'NGINX_EOF'
-            server {
-                listen 80;
-                server_name _;
-                root /usr/share/nginx/html;
-                index index.html;
-
-                location / {
-                    try_files $uri $uri/ /index.html;
-                }
-
-                location /v1/ {
-                    proxy_pass http://backend:8000;
-                    proxy_set_header Host $host;
-                    proxy_set_header X-Real-IP $remote_addr;
-                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto $scheme;
-                    client_max_body_size 100M;
-                }
-
-                location /health {
-                    proxy_pass http://backend:8000;
-                }
-            }
-            NGINX_EOF
-
-            # 7. Copiar index.html desde el repo clonado temporalmente
-            TMPDIR=$(mktemp -d)
-            git clone --depth 1 https://github.com/${{ github.repository }}.git $TMPDIR
-            cp $TMPDIR/frontend/index.html $DEPLOY_DIR/frontend/index.html
-            rm -rf $TMPDIR
-
-            # 8. Levantar servicios (puerto 80 en producción)
-            cd $DEPLOY_DIR
+            
+            # Navegar a la carpeta donde SCP dejó nuestros archivos
+            cd /opt/auto-profiling
+            
+            # Exportar las variables mágicas para que docker-compose las lea
+            export IMAGE_PLACEHOLDER="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+            export FRONTEND_PORT=80
+            
+            # Bajar contenedores huérfanos, actualizar imágenes y levantar todo
             docker compose down --remove-orphans || true
-            FRONTEND_PORT=80 docker compose up -d
-
-            # 9. Limpieza de imágenes antiguas
+            docker compose pull
+            docker compose up -d
+            
+            # Limpieza del disco duro
             docker image prune -a -f
