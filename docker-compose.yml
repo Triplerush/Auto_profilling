@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ${IMAGE_PLACEHOLDER:-ghcr.io/tu_usuario/auto_profilling:latest}
+    image: ${IMAGE_PLACEHOLDER:-ghcr.io/triplerush/auto_profilling:latest}
     container_name: profiling_backend
     restart: unless-stopped
     ports:

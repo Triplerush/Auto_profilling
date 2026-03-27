@@ -19,7 +19,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Copiar archivos estáticos al VPS (¡La forma segura!)
+      # 1. Copiar archivos estáticos al VPS (Ruta correcta)
       - name: Copiar archivos al VPS vía SCP
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -27,7 +27,7 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           source: "docker-compose.yml,frontend/"
-          target: "/opt/auto-profiling"
+          target: "/home/deployer/auto-profiling"
 
       # 2. Obtener el nombre del repo en minúsculas
       - name: Lowercase Repository Name
@@ -60,8 +60,8 @@ jobs:
           script: |
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u "${{ github.actor }}" --password-stdin
             
-            # Navegar a la carpeta donde SCP dejó nuestros archivos
-            cd /opt/auto-profiling
+            # ¡CORREGIDO! Navegar a la carpeta correcta
+            cd /home/deployer/auto-profiling
             
             # Exportar las variables mágicas para que docker-compose las lea
             export IMAGE_PLACEHOLDER="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
