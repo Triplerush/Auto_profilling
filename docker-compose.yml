@@ -1,0 +1,43 @@
+services:
+  backend:
+    build: .
+    container_name: profiling_backend
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      - PROFILING_REDIS_URL=redis://redis:6379/0
+      - PROFILING_DEBUG=false
+    volumes:
+      - profiling_data:/tmp/profiling
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: profiling_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  frontend:
+    image: nginx:alpine
+    container_name: profiling_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+
+volumes:
+  profiling_data:
+  redis_data:
