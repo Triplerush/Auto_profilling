@@ -3,16 +3,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.profiling import router as profiling_router
+from app.api.v1.profiling import router as notebooks_router
 from app.core.config import settings
-from app.services.storage import close_redis, ensure_dirs
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ensure_dirs()
+    settings.notebooks_dir.mkdir(parents=True, exist_ok=True)
     yield
-    await close_redis()
 
 
 app = FastAPI(
@@ -29,7 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(profiling_router)
+app.include_router(notebooks_router)
 
 
 @app.get("/health")

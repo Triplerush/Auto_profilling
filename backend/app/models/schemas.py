@@ -1,56 +1,57 @@
 from pydantic import BaseModel
-from enum import Enum
 
 
-class TaskStatus(str, Enum):
-    pending = "pending"
-    processing = "processing"
-    completed = "completed"
-    failed = "failed"
+# ──────────────────────────────────────────────
+# Data Contract: Notebook Visualization Platform
+# ──────────────────────────────────────────────
 
 
-class ColumnProfile(BaseModel):
-    name: str
-    dtype: str
-    null_count: int
-    null_percent: float
-    unique_count: int
-    unique_percent: float
+class NotebookSummary(BaseModel):
+    """Resumen para la galeria de notebooks."""
+    id: str
+    filename: str
+    title: str
+    description: str
+    cell_count: int
+    code_cells: int
+    markdown_cells: int
+    has_images: bool
+    has_dataframes: bool
 
 
-class HealthSummary(BaseModel):
-    total_rows: int
-    total_columns: int
-    memory_usage_mb: float
-    duplicate_rows: int
-    duplicate_percent: float
-    total_nulls: int
-    total_null_percent: float
-    columns: list[ColumnProfile]
+class CellOutput(BaseModel):
+    """Un output individual de una celda de codigo."""
+    output_type: str  # text, html, image, error, dataframe
+    content: str      # texto plano, HTML, base64, o JSON stringificado
+    attrs: dict | None = None  # metadata adicional (ej: mime_type, alt_text)
 
 
-class CleaningSummary(BaseModel):
-    strings_normalized: int
-    empty_rows_removed: int
-    empty_cols_removed: int
-    duplicates_removed: int
-    values_coerced: int
-    outliers_flagged: int
-    dlq_records: int
+class NotebookCell(BaseModel):
+    """Celda parseada de un notebook."""
+    index: int
+    cell_type: str      # markdown, code
+    source: str          # codigo fuente o markdown raw
+    outputs: list[CellOutput]
+    execution_count: int | None = None
 
 
-class ProcessResponse(BaseModel):
-    task_id: str
-    status: TaskStatus
-    health_summary: HealthSummary
-    cleaning_summary: CleaningSummary
-    download_url: str
+class NotebookDetail(BaseModel):
+    """Notebook completo parseado - Data Contract principal."""
+    id: str
+    filename: str
+    title: str
+    description: str
+    cells: list[NotebookCell]
 
 
-class TaskStatusResponse(BaseModel):
-    task_id: str
-    status: TaskStatus
-    health_summary: HealthSummary | None = None
-    cleaning_summary: CleaningSummary | None = None
-    download_url: str | None = None
-    error: str | None = None
+class NotebookListResponse(BaseModel):
+    """Respuesta del endpoint de listado."""
+    notebooks: list[NotebookSummary]
+    total: int
+
+
+class UploadResponse(BaseModel):
+    """Respuesta al subir un notebook."""
+    id: str
+    filename: str
+    message: str

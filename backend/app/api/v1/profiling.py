@@ -1,116 +1,67 @@
-import uuid
+import shutil
 
-import pandas as pd
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from fastapi.responses import FileResponse
 
 from app.core.config import settings
 from app.models.schemas import (
-    ProcessResponse,
-    TaskStatus,
-    TaskStatusResponse,
+    NotebookDetail,
+    NotebookListResponse,
+    UploadResponse,
 )
-from app.services.cleaning import run_cleaning_pipeline
-from app.services.profiling import generate_health_summary
-from app.services.storage import (
-    get_dlq_path,
-    get_output_path,
-    get_task,
-    save_task,
+from app.services.notebook_parser import (
+    get_notebook_by_id,
+    list_notebooks,
 )
 
-router = APIRouter(prefix="/v1/profiling", tags=["profiling"])
+router = APIRouter(prefix="/v1/notebooks", tags=["notebooks"])
 
 
-@router.post("/process", response_model=ProcessResponse)
-def process_file(file: UploadFile = File(...)):
-    """Endpoint principal: carga CSV, ejecuta profiling + limpieza y devuelve resultados.
+@router.get("", response_model=NotebookListResponse)
+def get_notebooks():
+    """Lista todos los notebooks disponibles en el directorio."""
+    notebooks = list_notebooks()
+    return NotebookListResponse(notebooks=notebooks, total=len(notebooks))
 
-    Se define como función síncrona (def) para que FastAPI la delegue
-    automáticamente a un thread pool, evitando bloquear el event loop
-    con operaciones CPU-bound de Pandas.
-    """
-    if not file.filename or not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Solo se aceptan archivos .csv")
 
-    task_id = uuid.uuid4().hex[:12]
+@router.get("/{notebook_id}", response_model=NotebookDetail)
+def get_notebook(notebook_id: str):
+    """Retorna el contenido completo parseado de un notebook."""
+    detail = get_notebook_by_id(notebook_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Notebook no encontrado")
+    return detail
 
+
+@router.post("/upload", response_model=UploadResponse)
+async def upload_notebook(file: UploadFile = File(...)):
+    """Sube un notebook .ipynb al directorio de notebooks."""
+    if not file.filename or not file.filename.endswith(".ipynb"):
+        raise HTTPException(status_code=400, detail="Solo se aceptan archivos .ipynb")
+
+    nb_dir = settings.notebooks_dir
+    nb_dir.mkdir(parents=True, exist_ok=True)
+
+    dest = nb_dir / file.filename
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    # Validar que sea un JSON valido de Jupyter
+    import json
     try:
-        df = pd.read_csv(file.file, low_memory=False)
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Error al leer el CSV: {e}")
+        with open(dest, "r", encoding="utf-8") as f:
+            nb = json.load(f)
+        if "cells" not in nb:
+            dest.unlink()
+            raise HTTPException(status_code=422, detail="El archivo no es un notebook Jupyter valido")
+    except json.JSONDecodeError:
+        dest.unlink()
+        raise HTTPException(status_code=422, detail="El archivo no contiene JSON valido")
 
-    if df.empty:
-        raise HTTPException(status_code=422, detail="El archivo CSV está vacío")
+    from app.services.notebook_parser import _generate_id
+    nb_id = _generate_id(file.filename)
 
-    # WAP - Write: captura inmutable del estado original
-    health_before = generate_health_summary(df)
-
-    # WAP - Audit: motor de limpieza
-    df_clean, df_dlq, cleaning_summary = run_cleaning_pipeline(df)
-
-    # WAP - Publish: consolidar en zona de descarga
-    output_path = get_output_path(task_id)
-    df_clean.to_csv(output_path, index=False)
-
-    if len(df_dlq) > 0:
-        dlq_path = get_dlq_path(task_id)
-        df_dlq.to_csv(dlq_path, index=False)
-
-    download_url = f"/v1/profiling/download/{task_id}"
-
-    return ProcessResponse(
-        task_id=task_id,
-        status=TaskStatus.completed,
-        health_summary=health_before,
-        cleaning_summary=cleaning_summary,
-        download_url=download_url,
-    )
-
-
-@router.get("/status/{task_id}", response_model=TaskStatusResponse)
-async def get_status(task_id: str):
-    """Consulta el estado de una tarea."""
-    # Primero verificar si el archivo existe (procesamiento síncrono ya terminado)
-    output_path = get_output_path(task_id)
-    if output_path.exists():
-        return TaskStatusResponse(
-            task_id=task_id,
-            status=TaskStatus.completed,
-            download_url=f"/v1/profiling/download/{task_id}",
-        )
-
-    # Fallback a Redis para tareas async
-    task_data = await get_task(task_id)
-    if task_data is None:
-        raise HTTPException(status_code=404, detail="Tarea no encontrada")
-
-    return TaskStatusResponse(**task_data)
-
-
-@router.get("/download/{task_id}")
-async def download_file(task_id: str):
-    """Descarga el archivo CSV limpio."""
-    output_path = get_output_path(task_id)
-    if not output_path.exists():
-        raise HTTPException(status_code=404, detail="Archivo no encontrado o expirado")
-
-    return FileResponse(
-        path=str(output_path),
-        media_type="text/csv",
-        filename=f"cleaned_{task_id}.csv",
-    )
-
-
-@router.get("/download/{task_id}/dlq")
-async def download_dlq(task_id: str):
-    """Descarga los registros enviados a la Dead Letter Queue."""
-    dlq_path = get_dlq_path(task_id)
-    if not dlq_path.exists():
-        raise HTTPException(status_code=404, detail="No hay registros DLQ para esta tarea")
-
-    return FileResponse(
-        path=str(dlq_path),
-        media_type="text/csv",
-        filename=f"dlq_{task_id}.csv",
+    return UploadResponse(
+        id=nb_id,
+        filename=file.filename,
+        message="Notebook subido exitosamente",
     )
