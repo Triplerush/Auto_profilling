@@ -67,9 +67,11 @@ jobs:
             TMPDIR=$(mktemp -d)
             git clone --depth 1 "$REPO_URL" "$TMPDIR"
 
-            # Copiar solo los archivos de orquestación
+            # Copiar archivos de orquestación y notebooks
             cp "$TMPDIR/docker-compose.yml" "$DEPLOY_DIR/"
             cp -r "$TMPDIR/proxy" "$DEPLOY_DIR/"
+            mkdir -p "$DEPLOY_DIR/notebooks"
+            cp "$TMPDIR"/notebooks/*.ipynb "$DEPLOY_DIR/notebooks/" 2>/dev/null || true
 
             # Eliminar clon temporal
             rm -rf "$TMPDIR"
@@ -83,6 +85,7 @@ jobs:
             # Configurar imágenes inmutables
             export BACKEND_IMAGE="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_backend:latest"
             export FRONTEND_IMAGE="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_frontend:latest"
+            export FRONTEND_PORT=80
 
             # Desplegar
             docker compose down --remove-orphans || true

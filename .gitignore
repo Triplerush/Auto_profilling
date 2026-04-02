@@ -23,6 +23,7 @@ dist/
 # Logs e historial
 *.log
 logs/
+docs/*
 
 # Testing
 .pytest_cache/
