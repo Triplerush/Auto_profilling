@@ -1,18 +1,9 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import {
-  Chart,
-  CategoryScale, LinearScale, BarElement, LineElement, PointElement,
-  ArcElement, RadialLinearScale,
-  Title, Tooltip, Legend, Filler,
-} from 'chart.js'
+import { Chart, registerables } from 'chart.js'
 import zoomPlugin from 'chartjs-plugin-zoom'
 
-Chart.register(
-  CategoryScale, LinearScale, BarElement, LineElement, PointElement,
-  ArcElement, RadialLinearScale,
-  Title, Tooltip, Legend, Filler, zoomPlugin,
-)
+Chart.register(...registerables, zoomPlugin)
 
 const props = defineProps({
   component: { type: Object, required: true },

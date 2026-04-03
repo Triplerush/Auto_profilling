@@ -8,6 +8,7 @@ services:
       - PROFILING_DEBUG=false
     volumes:
       - ./notebooks:/app/notebooks
+      - ./results:/app/results
 
   frontend:
     build: ./frontend

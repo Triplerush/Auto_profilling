@@ -67,11 +67,13 @@ jobs:
             TMPDIR=$(mktemp -d)
             git clone --depth 1 "$REPO_URL" "$TMPDIR"
 
-            # Copiar archivos de orquestación y notebooks
+            # Copiar archivos de orquestación, notebooks y results
             cp "$TMPDIR/docker-compose.yml" "$DEPLOY_DIR/"
             cp -r "$TMPDIR/proxy" "$DEPLOY_DIR/"
             mkdir -p "$DEPLOY_DIR/notebooks"
             cp "$TMPDIR"/notebooks/*.ipynb "$DEPLOY_DIR/notebooks/" 2>/dev/null || true
+            mkdir -p "$DEPLOY_DIR/results"
+            cp "$TMPDIR"/results/*.json "$DEPLOY_DIR/results/" 2>/dev/null || true
 
             # Eliminar clon temporal
             rm -rf "$TMPDIR"

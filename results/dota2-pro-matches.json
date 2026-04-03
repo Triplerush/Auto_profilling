@@ -1,0 +1,175 @@
+{
+  "metadata": {
+    "id": "dota2-pro-matches",
+    "title": "Dota 2 Pro Matches - Analisis",
+    "description": "Prediccion de victorias en partidas profesionales de Dota 2 con Feature Engineering por winrate historico de jugadores",
+    "author": "Triplerush",
+    "created_at": "2026-04-02T00:00:00+00:00",
+    "tags": ["machine-learning", "dota2", "clasificacion", "eda", "xgboost"],
+    "colab_url": null,
+    "github_url": null
+  },
+  "kpis": [
+    { "label": "Filas originales", "value": "47,877", "description": "Dataset crudo de Kaggle (27 columnas)", "severity": "ok" },
+    { "label": "Filas modelo", "value": "40,542", "description": "Tras limpieza + filtro por historia suficiente (93.1%)", "severity": "ok" },
+    { "label": "Accuracy RF", "value": "65.22%", "description": "Random Forest - overfitting severo (train 100%)", "severity": "critical" },
+    { "label": "Accuracy XGBoost", "value": "66.69%", "description": "Mejor modelo - gap train/test de solo 2.06%", "severity": "ok" },
+    { "label": "F1 Macro", "value": "0.66", "description": "XGBoost sobre test set temporal", "severity": "ok" },
+    { "label": "Features", "value": "15", "description": "Columnas del modelo final tras encoding", "severity": "ok" }
+  ],
+  "sections": [
+    {
+      "title": "Ingesta y Limpieza",
+      "description": "Dataset original de Kaggle: 47,877 filas x 27 columnas. Se eliminaron 11 columnas irrelevantes y 4,341 filas con nulos criticos.",
+      "components": [
+        {
+          "type": "metric_grid",
+          "title": "Resumen de Limpieza",
+          "metrics": [
+            { "label": "Filas originales", "value": "47,877", "severity": "ok" },
+            { "label": "Columnas eliminadas", "value": "11", "severity": "warning" },
+            { "label": "Filas eliminadas (nulos)", "value": "4,341", "severity": "warning" },
+            { "label": "Dataset limpio", "value": "43,536 x 16", "severity": "ok" },
+            { "label": "Duplicados exactos", "value": "18,829", "severity": "critical" },
+            { "label": "Filas bug 1970", "value": "2", "severity": "warning" }
+          ]
+        },
+        {
+          "type": "text",
+          "content": "Se detectaron **18,829 filas duplicadas** exactas y **2 filas con year=1970** (bug de Epoca Unix). El rango temporal limpio quedo entre **2013 y 2026**."
+        }
+      ]
+    },
+    {
+      "title": "Analisis Exploratorio (EDA)",
+      "description": "Balance del target y validacion del Feature Engineering",
+      "components": [
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "title": "Balance del Target (team1_win)",
+          "data": {
+            "labels": ["Pierde (0)", "Gana (1)"],
+            "datasets": [{ "label": "Partidas", "data": [20418, 23118] }]
+          },
+          "config": { "x_label": "Resultado", "y_label": "Frecuencia" }
+        },
+        {
+          "type": "text",
+          "content": "Balance: **53.10%** Gana Team 1, **46.90%** Pierde Team 1. Aceptable, no requiere rebalanceo."
+        },
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "title": "Winrate de Team 1 segun player_skill_diff (validacion Feature Engineering)",
+          "data": {
+            "labels": ["(-0.96, -0.57]", "(-0.57, -0.18]", "(-0.18, 0.22]", "(0.22, 0.61]", "(0.61, 1.0]"],
+            "datasets": [
+              { "label": "Winrate", "data": [0.244, 0.247, 0.530, 0.818, 0.929] },
+              { "label": "Partidas", "data": [41, 1869, 37004, 1600, 28] }
+            ]
+          },
+          "config": { "x_label": "player_skill_diff (bins)", "y_label": "Valor" }
+        },
+        {
+          "type": "text",
+          "content": "Cuando team1 tiene mejores jugadores (skill_diff > 0.6), su winrate sube a **92.9%**. Esto confirma que el Feature Engineering por jugador aporta informacion predictiva fuerte."
+        }
+      ]
+    },
+    {
+      "title": "Estadisticas de Features",
+      "description": "Descriptivos de las variables creadas por Feature Engineering",
+      "components": [
+        {
+          "type": "dataframe",
+          "title": "Estadisticas descriptivas de features",
+          "data": {
+            "columns": ["Feature", "Count", "Mean", "Std", "Min", "Max"],
+            "rows": [
+              ["team1_player_wr", 41955, 0.5257, 0.1011, 0.00, 1.00],
+              ["team2_player_wr", 41519, 0.5133, 0.1043, 0.00, 1.00],
+              ["player_skill_diff", 40542, 0.0133, 0.1198, -0.96, 1.00],
+              ["team1_avg_exp", 43532, 306.68, 284.27, 0.00, 1064.00],
+              ["team2_avg_exp", 43532, 269.14, 267.33, 0.00, 1064.00],
+              ["exp_diff", 43532, 37.54, 215.79, -1064.00, 1064.00]
+            ]
+          },
+          "config": { "sortable": true, "searchable": false, "page_size": 10 }
+        }
+      ]
+    },
+    {
+      "title": "Resultados del Modelo",
+      "description": "Comparacion Random Forest vs XGBoost con split temporal (pasado=train, futuro=test)",
+      "components": [
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "title": "Comparacion de Modelos (Test Accuracy)",
+          "data": {
+            "labels": ["Random Forest", "XGBoost"],
+            "datasets": [
+              { "label": "Train Accuracy", "data": [1.0, 0.6875] },
+              { "label": "Test Accuracy", "data": [0.6522, 0.6669] }
+            ]
+          },
+          "config": { "x_label": "Modelo", "y_label": "Accuracy" }
+        },
+        {
+          "type": "text",
+          "content": "**Random Forest** tiene overfitting severo: 100% en train vs 65.22% en test (gap de 34.78%). **XGBoost** es mucho mas estable con un gap de solo 2.06%."
+        },
+        {
+          "type": "dataframe",
+          "title": "Classification Report - XGBoost (Test)",
+          "data": {
+            "columns": ["Clase", "Precision", "Recall", "F1-Score", "Support"],
+            "rows": [
+              ["0 (Pierde)", 0.62, 0.64, 0.63, 3631],
+              ["1 (Gana)", 0.70, 0.69, 0.69, 4478],
+              ["Accuracy", null, null, 0.67, 8109],
+              ["Macro Avg", 0.66, 0.66, 0.66, 8109],
+              ["Weighted Avg", 0.67, 0.67, 0.67, 8109]
+            ]
+          },
+          "config": { "sortable": false, "searchable": false, "page_size": 10 }
+        }
+      ]
+    },
+    {
+      "title": "Feature Importance",
+      "description": "Importancia de cada variable en el modelo XGBoost final",
+      "components": [
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "title": "Feature Importance - XGBoost",
+          "data": {
+            "labels": [
+              "player_skill_diff", "bestOf_2.0", "exp_diff", "bestOf_3.0",
+              "team1_avg_exp", "team2_avg_exp", "bestOf_5.0", "team1_player_wr",
+              "bestOf_1.0", "team2_player_wr", "month", "hour"
+            ],
+            "datasets": [{ "label": "Importancia", "data": [0.3623, 0.1602, 0.0991, 0.0723, 0.0489, 0.0459, 0.0438, 0.0363, 0.0362, 0.0355, 0.0318, 0.0277] }]
+          },
+          "config": { "indexAxis": "y", "x_label": "Importancia", "y_label": "Feature" }
+        },
+        {
+          "type": "text",
+          "content": "**player_skill_diff** (36.23%) es la variable estrella, confirmando que el Feature Engineering por winrate historico de jugadores es la clave del modelo. **bestOf_2.0** (16.02%) indica que el formato de la serie (Bo2 vs Bo3 vs Bo5) tambien influye significativamente.\n\nVariables ignoradas por importancia < 1%: bestOf_4.0, bestOf_6.0, bestOf_7.0."
+        }
+      ]
+    },
+    {
+      "title": "Conclusiones",
+      "description": "",
+      "components": [
+        {
+          "type": "text",
+          "content": "## Hallazgos principales\n\n1. El **Feature Engineering por winrate historico** de jugadores es la variable mas predictiva (36.23% de importancia)\n2. **XGBoost** (66.69% accuracy) supera a Random Forest (65.22%) y generaliza mucho mejor (gap de 2% vs 35%)\n3. La validacion por bins confirma que cuando team1 tiene mejores jugadores (skill_diff > 0.6), gana el **92.9%** de las veces\n4. El modelo tiene accuracy modesto (~67%) — predecir Dota 2 es inherentemente dificil por la alta varianza del juego\n5. La clase 1 (Gana) tiene mejor precision/recall que la clase 0, reflejando el ligero desbalance del dataset\n\n## Proximos pasos\n\n- Incorporar datos de drafts (heroes seleccionados)\n- Probar modelos de series temporales para capturar meta-shifts\n- Aumentar el dataset con partidas recientes\n- Explorar feature engineering a nivel de equipo (no solo jugadores individuales)"
+        }
+      ]
+    }
+  ]
+}
