@@ -24,7 +24,7 @@ COPY --from=builder /opt/venv /opt/venv
 COPY main.py .
 COPY app/ app/
 
-RUN mkdir -p /app/notebooks
+RUN mkdir -p /app/notebooks /app/results
 
 EXPOSE 8000
 

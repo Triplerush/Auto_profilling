@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     notebooks_dir: Path = Path("/app/notebooks")
+    results_dir: Path = Path("/app/results")
 
     model_config = {"env_prefix": "PROFILING_"}
 
