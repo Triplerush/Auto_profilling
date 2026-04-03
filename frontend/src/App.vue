@@ -8,7 +8,7 @@ const router = useRouter()
   <header>
     <div class="header-inner" @click="router.push('/')">
       <h1 class="logo">Auto Profiling</h1>
-      <p class="subtitle">Visualizador de Notebooks</p>
+      <p class="subtitle">Plataforma Interactiva de Data Profiling</p>
     </div>
   </header>
   <main>
@@ -50,7 +50,7 @@ header {
 .subtitle { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.15rem; }
 main {
   width: 100%;
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 1.5rem;
 }
