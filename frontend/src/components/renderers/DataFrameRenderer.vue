@@ -72,7 +72,7 @@ function onSearch() {
 
 <template>
   <div class="glass-card overflow-hidden animate-fade-in">
-    <h4 v-if="component.title" class="text-lg font-semibold text-slate-100 px-5 pt-5 pb-2">{{ component.title }}</h4>
+    <h4 v-if="component.title" class="text-lg font-semibold text-heading px-5 pt-5 pb-2">{{ component.title }}</h4>
 
     <input
       v-if="component.config?.searchable !== false"

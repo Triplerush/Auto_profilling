@@ -31,8 +31,8 @@ function severityBorder(severity) {
             severityBorder(m.severity)
           ]"
         >
-          <div class="text-sm text-slate-400 font-medium mb-1">{{ m.label }}</div>
-          <div class="text-2xl font-bold text-slate-100">{{ m.value }}</div>
+          <div class="text-sm text-muted font-medium mb-1">{{ m.label }}</div>
+          <div class="text-2xl font-bold text-heading">{{ m.value }}</div>
           <div v-if="m.description" class="text-xs text-slate-500 mt-2 line-clamp-2">{{ m.description }}</div>
         </div>
       </TooltipTrigger>

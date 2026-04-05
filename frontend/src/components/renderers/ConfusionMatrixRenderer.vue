@@ -38,7 +38,7 @@ function tooltipText(ri, ci, val) {
 
 <template>
   <div class="glass-card p-6 animate-fade-in">
-    <h4 v-if="component.title" class="text-lg font-semibold text-slate-100 mb-4">{{ component.title }}</h4>
+    <h4 v-if="component.title" class="text-lg font-semibold text-heading mb-4">{{ component.title }}</h4>
 
     <ScrollAreaRoot class="w-full" type="hover">
       <ScrollAreaViewport class="w-full">

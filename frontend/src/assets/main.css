@@ -3,16 +3,49 @@
 /* Base resets */
 @layer base {
   body {
-    @apply bg-slate-900 text-slate-200 antialiased;
+    @apply antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* Theme CSS custom properties */
+@layer base {
+  :root {
+    --bg-body: #0f172a;
+    --bg-card: rgb(30 41 59 / 0.8);
+    --bg-card-solid: #1e293b;
+    --border-card: rgb(51 65 85 / 0.5);
+    --bg-code: #0d1117;
+    --text-heading: #f1f5f9;
+    --text-body: #e2e8f0;
+    --text-muted: #94a3b8;
+    --text-faint: #64748b;
+  }
+
+  .light {
+    --bg-body: #f1f5f9;
+    --bg-card: rgb(255 255 255 / 0.75);
+    --bg-card-solid: #ffffff;
+    --border-card: rgb(148 163 184 / 0.35);
+    --bg-code: #e2e8f0;
+    --text-heading: #0f172a;
+    --text-body: #334155;
+    --text-muted: #475569;
+    --text-faint: #64748b;
+  }
+
+  body {
+    background: var(--bg-body);
+    color: var(--text-body);
   }
 }
 
 /* Glass card utility */
 @utility glass-card {
-  background: rgb(30 41 59 / 0.8);
+  background: var(--bg-card);
   backdrop-filter: blur(4px);
-  border: 1px solid rgb(51 65 85 / 0.5);
+  border: 1px solid var(--border-card);
   border-radius: 0.75rem;
 }
 
@@ -65,6 +98,24 @@
   animation: scale-in 0.2s ease-out;
 }
 
+/* Vue Router page transitions */
+@layer components {
+  .page-enter-active {
+    transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+  }
+  .page-leave-active {
+    transition: opacity 0.15s ease-in, transform 0.15s ease-in;
+  }
+  .page-enter-from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  .page-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 /* Reka UI tooltip styling */
 @layer components {
   .tooltip-content {
@@ -95,4 +146,130 @@
     content: '';
     @apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full min-w-[44px] min-h-[44px];
   }
+}
+
+/* Light mode overrides */
+@layer components {
+  /* Prose / Markdown */
+  .light .prose-dark h1, .light .prose-dark h2, .light .prose-dark h3 { @apply text-slate-900 font-bold; }
+  .light .prose-dark p { @apply text-slate-600; }
+  .light .prose-dark code { @apply bg-sky-50 text-sky-800 border border-sky-200/60; }
+  .light .prose-dark pre { @apply bg-slate-50 border-slate-300; }
+  .light .prose-dark pre code { @apply bg-transparent border-none; }
+  .light .prose-dark a { @apply text-sky-600 hover:text-sky-700; }
+  .light .prose-dark ul, .light .prose-dark ol { @apply text-slate-600; }
+  .light .prose-dark th { @apply bg-slate-100 text-slate-700 border-slate-300; }
+  .light .prose-dark td { @apply border-slate-200 text-slate-600; }
+  .light .prose-dark blockquote { @apply border-sky-400 text-slate-500 bg-sky-50/50; }
+
+  /* Tooltip */
+  .light .tooltip-content {
+    @apply bg-slate-800 text-slate-100 border-slate-700;
+  }
+  .light .tooltip-arrow {
+    fill: rgb(30 41 59);
+  }
+
+  /* Scrollbar */
+  .light .scrollbar-thumb {
+    @apply bg-slate-400/40 hover:bg-slate-400/60;
+  }
+
+  /* Skeleton pulse — visible in light mode */
+  .light .animate-pulse > div {
+    @apply bg-slate-300/50;
+  }
+
+  /* Tables in light mode */
+  .light table th {
+    background: rgb(241 245 249) !important;
+    color: var(--text-muted) !important;
+    border-color: rgb(203 213 225 / 0.5) !important;
+  }
+  .light table td {
+    color: var(--text-body) !important;
+    border-color: rgb(226 232 240 / 0.6) !important;
+  }
+  .light table tr:hover td {
+    background: rgb(241 245 249 / 0.5) !important;
+  }
+  .light table tr:nth-child(even) td {
+    background: rgb(248 250 252 / 0.6) !important;
+  }
+
+  /* Code blocks in light mode */
+  .light pre {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    border-color: rgb(203 213 225 / 0.5) !important;
+  }
+
+  /* Search inputs in light mode */
+  .light input[type="text"],
+  .light input[placeholder] {
+    background: rgb(248 250 252) !important;
+    color: var(--text-body) !important;
+    border-color: rgb(203 213 225 / 0.5) !important;
+  }
+  .light input::placeholder {
+    color: var(--text-faint) !important;
+  }
+
+  /* Header bar backgrounds in light mode (code snippet, table headers) */
+  .light .bg-slate-700\/30 {
+    background: rgb(241 245 249 / 0.8) !important;
+  }
+  .light .bg-slate-800\/50,
+  .light .bg-slate-900\/50 {
+    background: rgb(241 245 249 / 0.6) !important;
+  }
+
+  /* Confusion matrix text in light mode */
+  .light .text-slate-100 {
+    color: var(--text-heading) !important;
+  }
+  .light .text-slate-300 {
+    color: var(--text-body) !important;
+  }
+  .light .text-slate-400 {
+    color: var(--text-muted) !important;
+  }
+  .light .text-slate-500 {
+    color: var(--text-faint) !important;
+  }
+
+  /* Select elements in light mode */
+  .light select {
+    background: rgb(248 250 252) !important;
+    color: var(--text-body) !important;
+  }
+
+  /* Badges: keep their colored backgrounds readable */
+  .light .bg-sky-500\/10,
+  .light .bg-sky-500\/15 {
+    background: rgb(14 165 233 / 0.08) !important;
+  }
+  .light .bg-emerald-500\/15 {
+    background: rgb(16 185 129 / 0.1) !important;
+  }
+  .light .bg-violet-500\/15 {
+    background: rgb(139 92 246 / 0.1) !important;
+  }
+}
+
+/* Theme-aware text utilities */
+@utility text-heading {
+  color: var(--text-heading);
+}
+@utility text-body {
+  color: var(--text-body);
+}
+@utility text-muted {
+  color: var(--text-muted);
+}
+@utility text-faint {
+  color: var(--text-faint);
+}
+@utility bg-code {
+  background: var(--bg-code);
 }

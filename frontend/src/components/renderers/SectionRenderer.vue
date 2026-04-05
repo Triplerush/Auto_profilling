@@ -28,7 +28,7 @@ const rendererMap = {
   <div class="animate-slide-up">
     <div class="flex items-center gap-3 mb-5">
       <div class="w-1 h-6 bg-sky-500 rounded-full"></div>
-      <h3 class="text-xl font-bold text-slate-100">{{ section.title }}</h3>
+      <h3 class="text-xl font-bold text-heading">{{ section.title }}</h3>
     </div>
     <p v-if="section.description" class="text-sm text-slate-400 mb-5 -mt-2 ml-4">{{ section.description }}</p>
 

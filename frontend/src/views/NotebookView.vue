@@ -3,12 +3,18 @@ import { onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { store } from '../store.js'
 import NotebookCellRenderer from '../components/NotebookCellRenderer.vue'
+import SkeletonLoader from '../components/SkeletonLoader.vue'
+import { useSEO } from '../composables/useSEO.js'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
+const { update: updateSEO } = useSEO({})
 
 onMounted(() => store.fetchNotebook(props.id))
 watch(() => props.id, (newId) => store.fetchNotebook(newId))
+watch(() => store.currentNotebook, (nb) => {
+  if (nb) updateSEO(nb.title, `Notebook: ${nb.filename}`)
+})
 </script>
 
 <template>
@@ -24,10 +30,13 @@ watch(() => props.id, (newId) => store.fetchNotebook(newId))
       Todos los Notebooks
     </button>
 
-    <!-- Loading / Error -->
-    <div v-if="store.loading" class="flex items-center justify-center py-16">
-      <div class="text-slate-400 text-sm">Cargando notebook...</div>
-    </div>
+    <!-- Loading skeletons -->
+    <template v-if="store.loading">
+      <SkeletonLoader variant="header" />
+      <SkeletonLoader variant="card" :count="3" />
+    </template>
+
+    <!-- Error -->
     <div v-else-if="store.error" class="glass-card p-8 text-center border-red-500/30">
       <p class="text-red-400">{{ store.error }}</p>
     </div>
@@ -35,7 +44,7 @@ watch(() => props.id, (newId) => store.fetchNotebook(newId))
     <template v-else-if="store.currentNotebook">
       <!-- Header -->
       <div class="glass-card p-6 mb-2">
-        <h2 class="text-2xl font-bold text-slate-100 mb-1">{{ store.currentNotebook.title }}</h2>
+        <h2 class="text-2xl font-bold text-heading mb-1">{{ store.currentNotebook.title }}</h2>
         <span class="text-xs text-slate-500 font-mono">{{ store.currentNotebook.filename }}</span>
       </div>
 

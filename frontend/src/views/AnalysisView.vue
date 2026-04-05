@@ -4,12 +4,20 @@ import { useRouter } from 'vue-router'
 import { store } from '../store.js'
 import MetricGridRenderer from '../components/renderers/MetricGridRenderer.vue'
 import SectionRenderer from '../components/renderers/SectionRenderer.vue'
+import SkeletonLoader from '../components/SkeletonLoader.vue'
+import { useSEO } from '../composables/useSEO.js'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
+const { update: updateSEO } = useSEO({})
 
 onMounted(() => store.fetchAnalysis(props.id))
 watch(() => props.id, (newId) => store.fetchAnalysis(newId))
+watch(() => store.currentAnalysis, (analysis) => {
+  if (analysis?.metadata) {
+    updateSEO(analysis.metadata.title, analysis.metadata.description)
+  }
+})
 </script>
 
 <template>
@@ -17,7 +25,7 @@ watch(() => props.id, (newId) => store.fetchAnalysis(newId))
     <!-- Back button -->
     <button
       @click="router.push('/')"
-      class="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-sky-400 transition-colors self-start cursor-pointer"
+      class="inline-flex items-center gap-1.5 text-sm text-muted hover:text-sky-400 transition-colors self-start cursor-pointer"
     >
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
@@ -25,10 +33,14 @@ watch(() => props.id, (newId) => store.fetchAnalysis(newId))
       Todos los Analisis
     </button>
 
-    <!-- Loading / Error -->
-    <div v-if="store.loading" class="flex items-center justify-center py-16">
-      <div class="text-slate-400 text-sm">Cargando analisis...</div>
-    </div>
+    <!-- Loading skeletons -->
+    <template v-if="store.loading">
+      <SkeletonLoader variant="header" />
+      <SkeletonLoader variant="kpi" :count="4" />
+      <SkeletonLoader variant="chart" :count="2" />
+    </template>
+
+    <!-- Error -->
     <div v-else-if="store.error" class="glass-card p-8 text-center border-red-500/30">
       <p class="text-red-400">{{ store.error }}</p>
     </div>
@@ -36,17 +48,17 @@ watch(() => props.id, (newId) => store.fetchAnalysis(newId))
     <template v-else-if="store.currentAnalysis">
       <!-- Header Card -->
       <div class="glass-card p-8">
-        <h2 class="text-3xl font-bold text-slate-100 mb-3">
+        <h2 class="text-3xl font-bold text-heading mb-3">
           {{ store.currentAnalysis.metadata.title }}
         </h2>
-        <p v-if="store.currentAnalysis.metadata.description" class="text-slate-300 leading-relaxed mb-4">
+        <p v-if="store.currentAnalysis.metadata.description" class="text-body leading-relaxed mb-4">
           {{ store.currentAnalysis.metadata.description }}
         </p>
         <div class="flex items-center gap-4 flex-wrap text-sm">
-          <span v-if="store.currentAnalysis.metadata.author" class="text-slate-300 font-medium">
+          <span v-if="store.currentAnalysis.metadata.author" class="text-body font-medium">
             {{ store.currentAnalysis.metadata.author }}
           </span>
-          <span class="text-slate-500">
+          <span class="text-faint">
             {{ store.currentAnalysis.metadata.created_at.slice(0, 10) }}
           </span>
           <a
