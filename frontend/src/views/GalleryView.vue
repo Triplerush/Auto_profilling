@@ -3,9 +3,20 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { store } from '../store.js'
 import UploadFile from '../components/UploadFile.vue'
+import {
+  CollapsibleRoot,
+  CollapsibleTrigger,
+  CollapsibleContent,
+  DialogRoot,
+  DialogTrigger,
+  DialogPortal,
+  DialogOverlay,
+  DialogContent,
+  DialogTitle,
+  DialogClose,
+} from 'reka-ui'
 
 const router = useRouter()
-const showUpload = ref(false)
 const showLegacy = ref(false)
 
 onMounted(() => {
@@ -20,137 +31,122 @@ function openAnalysis(id) {
 function openNotebook(id) {
   router.push({ name: 'notebook', params: { id } })
 }
-
-function onUploaded() {
-  showUpload.value = false
-  store.fetchAnalyses()
-  store.fetchNotebooks()
-}
 </script>
 
 <template>
-  <div class="gallery">
-    <div class="gallery-header">
+  <div class="flex flex-col gap-6 animate-fade-in">
+    <!-- Header -->
+    <div class="flex justify-between items-start flex-wrap gap-4">
       <div>
-        <h2>Mis Analisis</h2>
-        <p>Selecciona un analisis para visualizar su dashboard interactivo.</p>
+        <h2 class="text-3xl font-bold text-slate-100">Mis Analisis</h2>
+        <p class="text-slate-400 mt-1">Selecciona un analisis para visualizar su dashboard interactivo.</p>
       </div>
-      <button class="btn" @click="showUpload = !showUpload">
-        {{ showUpload ? 'Cancelar' : 'Subir Archivo' }}
-      </button>
+
+      <DialogRoot>
+        <DialogTrigger
+          class="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-semibold text-sm transition-colors cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Subir Archivo
+        </DialogTrigger>
+        <DialogPortal>
+          <DialogOverlay class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-fade-in" />
+          <DialogContent class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg animate-scale-in">
+            <div class="glass-card p-6">
+              <div class="flex items-center justify-between mb-4">
+                <DialogTitle class="text-lg font-semibold text-slate-100">Subir Archivo</DialogTitle>
+                <DialogClose class="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer p-1">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </DialogClose>
+              </div>
+              <UploadFile @uploaded="store.fetchAnalyses(); store.fetchNotebooks()" />
+            </div>
+          </DialogContent>
+        </DialogPortal>
+      </DialogRoot>
     </div>
 
-    <UploadFile v-if="showUpload" @uploaded="onUploaded" />
+    <!-- Loading / Error -->
+    <div v-if="store.loading" class="flex items-center justify-center py-16">
+      <div class="text-slate-400 text-sm">Cargando...</div>
+    </div>
+    <div v-else-if="store.error" class="glass-card p-8 text-center border-red-500/30">
+      <p class="text-red-400">{{ store.error }}</p>
+    </div>
 
-    <div v-if="store.loading" class="status-msg">Cargando...</div>
-    <div v-else-if="store.error" class="status-msg error">{{ store.error }}</div>
-
-    <!-- Analyses (primary) -->
-    <div v-if="store.analyses.length" class="grid">
+    <!-- Analyses Grid -->
+    <div v-if="store.analyses.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       <div
         v-for="a in store.analyses"
         :key="a.id"
-        class="analysis-card"
+        class="glass-card p-6 hover:border-sky-500/30 transition-all duration-300 hover:-translate-y-1 cursor-pointer group"
         @click="openAnalysis(a.id)"
       >
-        <h3 class="card-title">{{ a.title }}</h3>
-        <p class="card-desc">{{ a.description || 'Sin descripcion' }}</p>
-        <div class="card-meta">
-          <span v-if="a.author" class="meta-author">{{ a.author }}</span>
-          <span class="meta-date">{{ a.created_at.slice(0, 10) }}</span>
-          <span class="badge kpi">{{ a.kpi_count }} KPIs</span>
-          <span class="badge section">{{ a.section_count }} secciones</span>
+        <h3 class="text-lg font-semibold text-slate-100 group-hover:text-sky-400 transition-colors mb-2">
+          {{ a.title }}
+        </h3>
+        <p class="text-sm text-slate-400 line-clamp-2 mb-3 leading-relaxed">
+          {{ a.description || 'Sin descripcion' }}
+        </p>
+        <div class="flex items-center gap-2 flex-wrap text-xs mb-3">
+          <span v-if="a.author" class="text-slate-300 font-medium">{{ a.author }}</span>
+          <span class="text-slate-500">{{ a.created_at.slice(0, 10) }}</span>
+          <span class="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold">{{ a.kpi_count }} KPIs</span>
+          <span class="px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 font-semibold">{{ a.section_count }} secciones</span>
         </div>
-        <div v-if="a.tags.length" class="card-tags">
-          <span v-for="tag in a.tags" :key="tag" class="tag">{{ tag }}</span>
+        <div v-if="a.tags.length" class="flex gap-2 flex-wrap">
+          <span
+            v-for="tag in a.tags"
+            :key="tag"
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/10 text-sky-400 border border-sky-500/20"
+          >
+            {{ tag }}
+          </span>
         </div>
       </div>
     </div>
 
-    <div v-else-if="!store.loading && !store.error" class="status-msg">
-      No hay analisis disponibles. Exporta un Data Contract desde tu notebook o sube un archivo <code>.json</code>.
+    <div v-else-if="!store.loading && !store.error" class="text-center py-16 text-slate-500">
+      <p>No hay analisis disponibles.</p>
+      <p class="text-sm mt-1">Exporta un Data Contract desde tu notebook o sube un archivo <code class="bg-slate-700/50 text-sky-300 px-1.5 py-0.5 rounded text-sm">.json</code>.</p>
     </div>
 
-    <!-- Legacy notebooks (secondary) -->
-    <div v-if="store.notebooks.length" class="legacy-section">
-      <button class="legacy-toggle" @click="showLegacy = !showLegacy">
-        {{ showLegacy ? '▾' : '▸' }} Notebooks legacy ({{ store.notebooks.length }})
-      </button>
-      <div v-if="showLegacy" class="grid legacy-grid">
-        <div
-          v-for="nb in store.notebooks"
-          :key="nb.id"
-          class="nb-card"
-          @click="openNotebook(nb.id)"
+    <!-- Legacy Notebooks -->
+    <CollapsibleRoot v-if="store.notebooks.length" v-model:open="showLegacy" class="mt-2">
+      <CollapsibleTrigger class="flex items-center gap-2 text-sm text-slate-500 hover:text-sky-400 transition-colors cursor-pointer select-none py-1">
+        <svg
+          :class="['w-4 h-4 transition-transform duration-200', showLegacy ? 'rotate-90' : '']"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
         >
-          <h3 class="card-title">{{ nb.title }}</h3>
-          <p class="card-desc">{{ nb.description || 'Sin descripcion' }}</p>
-          <div class="card-meta">
-            <span class="badge code">{{ nb.code_cells }} code</span>
-            <span class="badge md">{{ nb.markdown_cells }} md</span>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+        Notebooks legacy ({{ store.notebooks.length }})
+      </CollapsibleTrigger>
+
+      <CollapsibleContent>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
+          <div
+            v-for="nb in store.notebooks"
+            :key="nb.id"
+            class="glass-card p-5 hover:border-sky-500/30 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer group"
+            @click="openNotebook(nb.id)"
+          >
+            <h3 class="text-base font-semibold text-slate-100 group-hover:text-sky-400 transition-colors mb-1">
+              {{ nb.title }}
+            </h3>
+            <p class="text-sm text-slate-400 line-clamp-2 mb-2">{{ nb.description || 'Sin descripcion' }}</p>
+            <div class="flex items-center gap-2 text-xs mb-2">
+              <span class="px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-400 font-semibold">{{ nb.code_cells }} code</span>
+              <span class="px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 font-semibold">{{ nb.markdown_cells }} md</span>
+            </div>
+            <div class="text-xs text-slate-500 font-mono">{{ nb.filename }}</div>
           </div>
-          <div class="nb-file">{{ nb.filename }}</div>
         </div>
-      </div>
-    </div>
+      </CollapsibleContent>
+    </CollapsibleRoot>
   </div>
 </template>
-
-<style scoped>
-.gallery { display: flex; flex-direction: column; gap: 1.25rem; }
-.gallery-header {
-  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;
-}
-.gallery-header h2 { font-size: 1.3rem; color: var(--accent); }
-.gallery-header p { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.2rem; }
-.btn {
-  padding: 0.5rem 1.25rem; background: var(--accent); color: var(--bg-dark);
-  border: none; border-radius: 8px; font-weight: 600; font-size: 0.85rem;
-  cursor: pointer; transition: background 0.2s;
-}
-.btn:hover { background: var(--accent-hover); }
-.status-msg {
-  text-align: center; padding: 3rem; color: var(--text-secondary); font-size: 0.9rem;
-}
-.status-msg.error { color: var(--danger); }
-.status-msg code {
-  background: var(--bg-code); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.8rem;
-}
-.grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem;
-}
-.analysis-card, .nb-card {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
-  padding: 1.25rem; cursor: pointer; transition: border-color 0.2s, transform 0.15s;
-}
-.analysis-card:hover, .nb-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-.card-title { font-size: 1rem; color: var(--text-primary); margin-bottom: 0.4rem; }
-.card-desc {
-  font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-  margin-bottom: 0.75rem;
-}
-.card-meta { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem; }
-.meta-author { font-size: 0.75rem; color: var(--text-primary); font-weight: 500; }
-.meta-date { font-size: 0.72rem; color: var(--text-secondary); }
-.badge {
-  font-size: 0.68rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 600;
-}
-.badge.kpi { background: rgba(34, 197, 94, 0.15); color: var(--success); }
-.badge.section { background: rgba(167, 139, 250, 0.15); color: var(--purple); }
-.badge.code { background: rgba(56, 189, 248, 0.15); color: var(--accent); }
-.badge.md { background: rgba(167, 139, 250, 0.15); color: var(--purple); }
-.card-tags { display: flex; gap: 0.3rem; flex-wrap: wrap; }
-.tag {
-  font-size: 0.65rem; padding: 0.12rem 0.4rem; border-radius: 4px;
-  background: rgba(56, 189, 248, 0.1); color: var(--accent);
-}
-.nb-file { font-size: 0.7rem; color: var(--text-secondary); font-family: monospace; }
-.legacy-section { margin-top: 0.5rem; }
-.legacy-toggle {
-  background: transparent; border: none; color: var(--text-secondary);
-  font-size: 0.82rem; cursor: pointer; padding: 0.3rem 0;
-}
-.legacy-toggle:hover { color: var(--accent); }
-.legacy-grid { margin-top: 0.75rem; }
-</style>

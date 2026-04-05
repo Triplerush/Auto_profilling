@@ -1,11 +1,19 @@
 <script setup>
-import { ref } from 'vue'
+import {
+  TooltipRoot,
+  TooltipTrigger,
+  TooltipPortal,
+  TooltipContent,
+  TooltipArrow,
+  ScrollAreaRoot,
+  ScrollAreaViewport,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+} from 'reka-ui'
 
 const props = defineProps({
   component: { type: Object, required: true },
 })
-
-const tooltip = ref({ show: false, text: '', x: 0, y: 0 })
 
 function cellColor(val) {
   if (val >= 0) {
@@ -17,79 +25,58 @@ function cellColor(val) {
   }
 }
 
-function showTooltip(e, row, col, val) {
-  tooltip.value = {
-    show: true,
-    text: `${props.component.columns[row]} / ${props.component.columns[col]}: ${val.toFixed(4)}`,
-    x: e.clientX,
-    y: e.clientY,
-  }
-}
-
-function hideTooltip() {
-  tooltip.value.show = false
+function tooltipText(ri, ci, val) {
+  return `${props.component.columns[ri]} / ${props.component.columns[ci]}: ${val.toFixed(4)}`
 }
 </script>
 
 <template>
-  <div class="corr-wrapper">
-    <h4 v-if="component.title" class="corr-title">{{ component.title }}</h4>
-    <div class="corr-scroll">
-      <table class="corr-table">
-        <thead>
-          <tr>
-            <th></th>
-            <th v-for="(col, i) in component.columns" :key="i" class="col-label">{{ col }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(row, ri) in component.matrix" :key="ri">
-            <th class="row-label">{{ component.columns[ri] }}</th>
-            <td
-              v-for="(val, ci) in row"
-              :key="ci"
-              :style="{ backgroundColor: cellColor(val) }"
-              class="corr-cell"
-              @mouseenter="showTooltip($event, ri, ci, val)"
-              @mouseleave="hideTooltip"
-            >
-              {{ val.toFixed(2) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div v-if="tooltip.show" class="tooltip" :style="{ left: tooltip.x + 12 + 'px', top: tooltip.y - 8 + 'px' }">
-      {{ tooltip.text }}
-    </div>
+  <div class="glass-card p-6 animate-fade-in">
+    <h4 v-if="component.title" class="text-lg font-semibold text-slate-100 mb-4">{{ component.title }}</h4>
+
+    <ScrollAreaRoot class="w-full" type="hover">
+      <ScrollAreaViewport class="w-full">
+        <table class="border-collapse text-xs font-mono">
+          <thead>
+            <tr>
+              <th class="px-2 py-1.5 bg-slate-800/50"></th>
+              <th
+                v-for="(col, i) in component.columns"
+                :key="i"
+                class="px-2 py-1.5 text-center text-slate-400 font-medium bg-slate-800/50 whitespace-nowrap"
+              >
+                {{ col }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, ri) in component.matrix" :key="ri">
+              <th class="px-2 py-1.5 text-right text-slate-400 font-medium bg-slate-800/50 whitespace-nowrap sticky left-0">
+                {{ component.columns[ri] }}
+              </th>
+              <TooltipRoot v-for="(val, ci) in row" :key="ci">
+                <TooltipTrigger as-child>
+                  <td
+                    :style="{ backgroundColor: cellColor(val) }"
+                    class="px-2 py-1.5 text-center text-slate-900 font-semibold border border-slate-700/30 min-w-[3rem] cursor-default"
+                  >
+                    {{ val.toFixed(2) }}
+                  </td>
+                </TooltipTrigger>
+                <TooltipPortal>
+                  <TooltipContent class="tooltip-content" :side-offset="5" side="top">
+                    {{ tooltipText(ri, ci, val) }}
+                    <TooltipArrow class="tooltip-arrow" />
+                  </TooltipContent>
+                </TooltipPortal>
+              </TooltipRoot>
+            </tr>
+          </tbody>
+        </table>
+      </ScrollAreaViewport>
+      <ScrollAreaScrollbar orientation="horizontal" class="scrollbar-track">
+        <ScrollAreaThumb class="scrollbar-thumb" />
+      </ScrollAreaScrollbar>
+    </ScrollAreaRoot>
   </div>
 </template>
-
-<style scoped>
-.corr-wrapper {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1rem;
-  position: relative;
-}
-.corr-title { font-size: 0.9rem; color: var(--text-primary); margin-bottom: 0.75rem; }
-.corr-scroll { overflow-x: auto; }
-.corr-table { border-collapse: collapse; font-size: 0.75rem; }
-.corr-table th, .corr-table td { padding: 0.35rem 0.5rem; text-align: center; }
-.col-label { color: var(--text-secondary); font-weight: 500; white-space: nowrap; }
-.row-label { color: var(--text-secondary); font-weight: 500; text-align: right; white-space: nowrap; }
-.corr-cell { color: #1e293b; font-weight: 600; cursor: default; min-width: 3rem; }
-.tooltip {
-  position: fixed;
-  background: var(--bg-dark);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.75rem;
-  pointer-events: none;
-  z-index: 100;
-  white-space: nowrap;
-}
-</style>

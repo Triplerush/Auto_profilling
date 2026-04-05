@@ -1,59 +1,47 @@
 <script setup>
+import {
+  TooltipRoot,
+  TooltipTrigger,
+  TooltipPortal,
+  TooltipContent,
+  TooltipArrow,
+} from 'reka-ui'
+
 defineProps({
   metrics: { type: Array, required: true },
 })
 
-function severityColor(severity) {
+function severityBorder(severity) {
   switch (severity) {
-    case 'warning': return 'var(--warning)'
-    case 'critical': return 'var(--danger)'
-    default: return 'var(--success)'
+    case 'critical': return 'border-l-red-500'
+    case 'warning': return 'border-l-amber-500'
+    case 'info': return 'border-l-sky-500'
+    default: return 'border-l-emerald-500'
   }
 }
 </script>
 
 <template>
-  <div class="metrics-grid">
-    <div
-      v-for="(m, i) in metrics"
-      :key="i"
-      class="metric-card"
-      :style="{ borderLeftColor: severityColor(m.severity) }"
-    >
-      <div class="metric-value">{{ m.value }}</div>
-      <div class="metric-label">{{ m.label }}</div>
-      <div v-if="m.description" class="metric-desc">{{ m.description }}</div>
-    </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-slide-up">
+    <TooltipRoot v-for="(m, i) in metrics" :key="i">
+      <TooltipTrigger as-child>
+        <div
+          :class="[
+            'glass-card p-5 border-l-4 hover:border-sky-500/30 transition-all duration-200 hover:-translate-y-0.5 cursor-default',
+            severityBorder(m.severity)
+          ]"
+        >
+          <div class="text-sm text-slate-400 font-medium mb-1">{{ m.label }}</div>
+          <div class="text-2xl font-bold text-slate-100">{{ m.value }}</div>
+          <div v-if="m.description" class="text-xs text-slate-500 mt-2 line-clamp-2">{{ m.description }}</div>
+        </div>
+      </TooltipTrigger>
+      <TooltipPortal v-if="m.description">
+        <TooltipContent class="tooltip-content max-w-xs" :side-offset="5">
+          {{ m.description }}
+          <TooltipArrow class="tooltip-arrow" />
+        </TooltipContent>
+      </TooltipPortal>
+    </TooltipRoot>
   </div>
 </template>
-
-<style scoped>
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 0.75rem;
-}
-.metric-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--success);
-  border-radius: 8px;
-  padding: 0.85rem 1rem;
-}
-.metric-value {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.metric-label {
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-  margin-top: 0.15rem;
-}
-.metric-desc {
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-  margin-top: 0.3rem;
-  opacity: 0.7;
-}
-</style>

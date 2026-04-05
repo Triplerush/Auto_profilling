@@ -60,46 +60,36 @@ async function submit() {
 </script>
 
 <template>
-  <div class="upload-card">
+  <div class="flex flex-col gap-4">
     <div
-      class="drop-zone"
-      :class="{ dragover }"
+      :class="[
+        'border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors',
+        dragover
+          ? 'border-sky-500 bg-sky-500/5'
+          : 'border-slate-600 hover:border-sky-500/50'
+      ]"
       @click="$refs.fileInput.click()"
       @dragover.prevent="dragover = true"
       @dragleave="dragover = false"
       @drop.prevent="onDrop"
     >
-      <p>Arrastra un archivo <strong>.json</strong> o <strong>.ipynb</strong> aqui o haz clic para seleccionar</p>
-      <input ref="fileInput" type="file" accept=".json,.ipynb" @change="onFileChange" />
+      <div class="text-4xl text-slate-500 mb-3">+</div>
+      <p class="text-slate-400 text-sm">
+        Arrastra un archivo <strong class="text-sky-400">.json</strong> o <strong class="text-sky-400">.ipynb</strong> aqui o haz clic para seleccionar
+      </p>
+      <p class="text-xs text-slate-500 mt-2">Data Contract JSON o Jupyter Notebook</p>
+      <input ref="fileInput" type="file" accept=".json,.ipynb" @change="onFileChange" class="hidden" />
     </div>
-    <div v-if="fileName" class="file-name">{{ fileName }}</div>
-    <div v-if="error" class="error">{{ error }}</div>
-    <button class="btn" :disabled="!selectedFile || uploading" @click="submit">
+
+    <div v-if="fileName" class="text-sm text-sky-400">{{ fileName }}</div>
+    <div v-if="error" class="text-sm text-red-400">{{ error }}</div>
+
+    <button
+      :disabled="!selectedFile || uploading"
+      @click="submit"
+      class="self-end px-5 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-semibold text-sm transition-colors cursor-pointer disabled:bg-slate-600 disabled:text-slate-400 disabled:cursor-not-allowed"
+    >
       {{ uploading ? 'Subiendo...' : 'Subir' }}
     </button>
   </div>
 </template>
-
-<style scoped>
-.upload-card {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem;
-  display: flex; flex-direction: column; gap: 0.75rem;
-}
-.drop-zone {
-  border: 2px dashed #475569; border-radius: 10px; padding: 2rem 1rem;
-  text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s;
-}
-.drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); }
-.drop-zone p { color: var(--text-secondary); font-size: 0.85rem; }
-.drop-zone strong { color: var(--accent); }
-input[type="file"] { display: none; }
-.file-name { color: var(--accent); font-size: 0.82rem; }
-.error { color: var(--danger); font-size: 0.82rem; }
-.btn {
-  align-self: flex-end; padding: 0.45rem 1.25rem; background: var(--accent); color: var(--bg-dark);
-  border: none; border-radius: 6px; font-weight: 600; font-size: 0.82rem; cursor: pointer;
-  transition: background 0.2s;
-}
-.btn:hover { background: var(--accent-hover); }
-.btn:disabled { background: #475569; color: var(--text-secondary); cursor: not-allowed; }
-</style>

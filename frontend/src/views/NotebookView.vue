@@ -12,19 +12,35 @@ watch(() => props.id, (newId) => store.fetchNotebook(newId))
 </script>
 
 <template>
-  <div class="nb-view">
-    <button class="back-btn" @click="router.push('/')">&larr; Todos los Notebooks</button>
+  <div class="flex flex-col gap-4 animate-fade-in">
+    <!-- Back button -->
+    <button
+      @click="router.push('/')"
+      class="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-sky-400 transition-colors self-start cursor-pointer"
+    >
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+      </svg>
+      Todos los Notebooks
+    </button>
 
-    <div v-if="store.loading" class="status-msg">Cargando notebook...</div>
-    <div v-else-if="store.error" class="status-msg error">{{ store.error }}</div>
+    <!-- Loading / Error -->
+    <div v-if="store.loading" class="flex items-center justify-center py-16">
+      <div class="text-slate-400 text-sm">Cargando notebook...</div>
+    </div>
+    <div v-else-if="store.error" class="glass-card p-8 text-center border-red-500/30">
+      <p class="text-red-400">{{ store.error }}</p>
+    </div>
 
     <template v-else-if="store.currentNotebook">
-      <div class="nb-header">
-        <h2>{{ store.currentNotebook.title }}</h2>
-        <span class="nb-filename">{{ store.currentNotebook.filename }}</span>
+      <!-- Header -->
+      <div class="glass-card p-6 mb-2">
+        <h2 class="text-2xl font-bold text-slate-100 mb-1">{{ store.currentNotebook.title }}</h2>
+        <span class="text-xs text-slate-500 font-mono">{{ store.currentNotebook.filename }}</span>
       </div>
 
-      <div class="cells">
+      <!-- Cells -->
+      <div class="flex flex-col gap-3">
         <NotebookCellRenderer
           v-for="cell in store.currentNotebook.cells"
           :key="cell.index"
@@ -34,20 +50,3 @@ watch(() => props.id, (newId) => store.fetchNotebook(newId))
     </template>
   </div>
 </template>
-
-<style scoped>
-.nb-view { display: flex; flex-direction: column; gap: 1rem; }
-.back-btn {
-  align-self: flex-start;
-  background: transparent; color: var(--accent); border: 1px solid var(--border);
-  border-radius: 6px; padding: 0.4rem 0.85rem; font-size: 0.8rem;
-  cursor: pointer; transition: background 0.2s;
-}
-.back-btn:hover { background: rgba(56, 189, 248, 0.1); }
-.status-msg { text-align: center; padding: 3rem; color: var(--text-secondary); }
-.status-msg.error { color: var(--danger); }
-.nb-header { margin-bottom: 0.5rem; }
-.nb-header h2 { font-size: 1.25rem; color: var(--accent); }
-.nb-filename { font-size: 0.75rem; color: var(--text-secondary); font-family: monospace; }
-.cells { display: flex; flex-direction: column; gap: 0.5rem; }
-</style>

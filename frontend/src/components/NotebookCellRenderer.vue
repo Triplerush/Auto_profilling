@@ -1,6 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import { marked } from 'marked'
+import {
+  CollapsibleRoot,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from 'reka-ui'
 
 const props = defineProps({
   cell: { type: Object, required: true },
@@ -14,108 +19,51 @@ const renderedMarkdown = computed(() => {
 
 <template>
   <!-- Markdown Cell -->
-  <div v-if="cell.cell_type === 'markdown'" class="cell cell-md">
-    <div class="md-content" v-html="renderedMarkdown"></div>
+  <div v-if="cell.cell_type === 'markdown'" class="glass-card p-5">
+    <div class="prose-dark text-sm leading-relaxed" v-html="renderedMarkdown"></div>
   </div>
 
   <!-- Code Cell -->
-  <div v-else-if="cell.cell_type === 'code'" class="cell cell-code">
-    <details class="code-source">
-      <summary class="code-toggle">
-        <span class="exec-badge" v-if="cell.execution_count">[{{ cell.execution_count }}]</span>
-        Codigo fuente
-      </summary>
-      <pre class="source-pre"><code>{{ cell.source }}</code></pre>
-    </details>
+  <div v-else-if="cell.cell_type === 'code'" class="glass-card overflow-hidden border-l-[3px] border-l-sky-500">
+    <CollapsibleRoot>
+      <CollapsibleTrigger
+        class="flex items-center gap-2 w-full px-4 py-3 text-sm text-slate-400 hover:bg-sky-500/5 transition-colors cursor-pointer select-none"
+      >
+        <svg class="w-4 h-4 text-slate-500 transition-transform duration-200 [[data-state=open]_&]:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+        <span v-if="cell.execution_count" class="text-sky-400 font-mono font-semibold text-xs">[{{ cell.execution_count }}]</span>
+        <span class="text-xs">Codigo fuente</span>
+        <span class="ml-auto px-2 py-0.5 rounded-full text-xs font-mono bg-sky-500/20 text-sky-400">code</span>
+      </CollapsibleTrigger>
 
-    <div v-if="cell.outputs.length > 0" class="outputs">
+      <CollapsibleContent>
+        <pre class="bg-slate-950 px-5 py-4 m-0 overflow-x-auto text-sm font-mono leading-relaxed text-slate-300 border-t border-slate-700/50"><code>{{ cell.source }}</code></pre>
+      </CollapsibleContent>
+    </CollapsibleRoot>
+
+    <div v-if="cell.outputs.length > 0" class="border-t border-slate-700/50">
       <template v-for="(out, i) in cell.outputs" :key="i">
         <!-- Text output -->
-        <pre v-if="out.output_type === 'text'" class="output-text">{{ out.content }}</pre>
+        <pre v-if="out.output_type === 'text'" class="px-5 py-3 m-0 text-sm leading-relaxed text-slate-400 bg-slate-900/50 overflow-x-auto whitespace-pre-wrap break-words">{{ out.content }}</pre>
 
         <!-- HTML / DataFrame -->
-        <div v-else-if="out.output_type === 'html'" class="output-html" v-html="out.content"></div>
+        <div v-else-if="out.output_type === 'html'" class="px-5 py-3 overflow-x-auto text-sm prose-dark" v-html="out.content"></div>
 
         <!-- Image -->
-        <div v-else-if="out.output_type === 'image'" class="output-image">
+        <div v-else-if="out.output_type === 'image'" class="p-4 text-center bg-slate-900/50">
           <img
             v-if="out.attrs?.mime_type === 'image/svg+xml'"
             :src="'data:image/svg+xml;utf8,' + encodeURIComponent(out.content)"
             alt="Output grafico"
+            class="max-w-full h-auto rounded-lg inline-block"
           />
-          <img v-else :src="out.content" alt="Output grafico" />
+          <img v-else :src="out.content" alt="Output grafico" class="max-w-full h-auto rounded-lg inline-block" />
         </div>
 
         <!-- Error -->
-        <pre v-else-if="out.output_type === 'error'" class="output-error">{{ out.content }}</pre>
+        <pre v-else-if="out.output_type === 'error'" class="px-5 py-3 m-0 text-sm leading-snug text-red-400 bg-red-500/5 overflow-x-auto whitespace-pre-wrap">{{ out.content }}</pre>
       </template>
     </div>
   </div>
 </template>
-
-<style scoped>
-.cell {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-/* ─── Markdown ─── */
-.cell-md { padding: 1.25rem 1.5rem; }
-.md-content { line-height: 1.6; font-size: 0.9rem; }
-.md-content :deep(h1) { font-size: 1.4rem; color: var(--accent); margin: 0.75rem 0 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
-.md-content :deep(h2) { font-size: 1.15rem; color: var(--accent); margin: 0.75rem 0 0.4rem; }
-.md-content :deep(h3) { font-size: 1rem; color: var(--text-primary); margin: 0.6rem 0 0.3rem; }
-.md-content :deep(p) { margin: 0.4rem 0; color: var(--text-secondary); }
-.md-content :deep(strong) { color: var(--text-primary); }
-.md-content :deep(code) { background: var(--bg-code); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.82rem; }
-.md-content :deep(ul), .md-content :deep(ol) { padding-left: 1.5rem; color: var(--text-secondary); }
-.md-content :deep(li) { margin: 0.2rem 0; }
-.md-content :deep(table) { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.82rem; }
-.md-content :deep(th), .md-content :deep(td) { padding: 0.4rem 0.6rem; border: 1px solid var(--border); text-align: left; }
-.md-content :deep(th) { background: var(--bg-dark); color: var(--text-secondary); font-weight: 500; }
-.md-content :deep(blockquote) { border-left: 3px solid var(--accent); padding-left: 1rem; color: var(--text-secondary); margin: 0.5rem 0; }
-
-/* ─── Code ─── */
-.cell-code { border-left: 3px solid var(--accent); }
-.code-source { }
-.code-toggle {
-  display: block; padding: 0.6rem 1rem; font-size: 0.78rem; color: var(--text-secondary);
-  cursor: pointer; user-select: none; transition: background 0.15s;
-}
-.code-toggle:hover { background: rgba(56, 189, 248, 0.05); }
-.exec-badge {
-  color: var(--accent); font-family: monospace; font-weight: 600; margin-right: 0.4rem;
-}
-.source-pre {
-  background: var(--bg-code); padding: 1rem 1.25rem; margin: 0;
-  overflow-x: auto; font-size: 0.8rem; line-height: 1.5; color: #c9d1d9;
-  border-top: 1px solid var(--border);
-}
-
-/* ─── Outputs ─── */
-.outputs { border-top: 1px solid var(--border); }
-.output-text {
-  padding: 0.75rem 1.25rem; margin: 0;
-  font-size: 0.8rem; line-height: 1.5; color: var(--text-secondary);
-  background: var(--bg-dark); overflow-x: auto; white-space: pre-wrap; word-break: break-word;
-}
-.output-html {
-  padding: 0.75rem 1.25rem; overflow-x: auto; font-size: 0.82rem;
-}
-.output-html :deep(table) { width: 100%; border-collapse: collapse; }
-.output-html :deep(th), .output-html :deep(td) {
-  padding: 0.35rem 0.6rem; border: 1px solid var(--border); text-align: left; font-size: 0.78rem;
-}
-.output-html :deep(th) { background: var(--bg-dark); color: var(--text-secondary); font-weight: 500; }
-.output-html :deep(td) { color: var(--text-primary); }
-.output-html :deep(tr:nth-child(even)) { background: rgba(15, 23, 42, 0.5); }
-.output-image { padding: 1rem; text-align: center; background: var(--bg-dark); }
-.output-image img { max-width: 100%; height: auto; border-radius: 6px; }
-.output-error {
-  padding: 0.75rem 1.25rem; margin: 0;
-  font-size: 0.78rem; line-height: 1.4; color: var(--danger);
-  background: rgba(239, 68, 68, 0.05); overflow-x: auto; white-space: pre-wrap;
-}
-</style>

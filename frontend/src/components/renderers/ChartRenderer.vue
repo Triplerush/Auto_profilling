@@ -71,29 +71,10 @@ watch(() => props.component, createChart, { deep: true })
 </script>
 
 <template>
-  <div class="chart-wrapper">
-    <h4 v-if="component.title" class="chart-title">{{ component.title }}</h4>
-    <div class="chart-container">
+  <div class="glass-card p-6 animate-fade-in">
+    <h4 v-if="component.title" class="text-lg font-semibold text-slate-100 mb-4">{{ component.title }}</h4>
+    <div class="relative min-h-[300px] max-h-[500px]">
       <canvas ref="canvasRef"></canvas>
     </div>
   </div>
 </template>
-
-<style scoped>
-.chart-wrapper {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1rem;
-}
-.chart-title {
-  font-size: 0.9rem;
-  color: var(--text-primary);
-  margin-bottom: 0.75rem;
-}
-.chart-container {
-  position: relative;
-  min-height: 300px;
-  max-height: 500px;
-}
-</style>

@@ -1,5 +1,12 @@
 <script setup>
 import { ref } from 'vue'
+import {
+  TooltipRoot,
+  TooltipTrigger,
+  TooltipPortal,
+  TooltipContent,
+  TooltipArrow,
+} from 'reka-ui'
 
 const props = defineProps({
   component: { type: Object, required: true },
@@ -15,45 +22,29 @@ async function copyCode() {
 </script>
 
 <template>
-  <div class="code-wrapper">
-    <div class="code-header">
-      <h4 v-if="component.title" class="code-title">{{ component.title }}</h4>
-      <span class="code-lang">{{ component.language || 'python' }}</span>
-      <button class="copy-btn" @click="copyCode">{{ copied ? 'Copiado!' : 'Copiar' }}</button>
+  <div class="glass-card overflow-hidden animate-fade-in">
+    <div class="flex items-center gap-3 px-4 py-2.5 bg-slate-700/30 border-b border-slate-700/50">
+      <h4 v-if="component.title" class="text-sm font-medium text-slate-200 flex-1">{{ component.title }}</h4>
+      <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-900/50 text-sky-400">
+        {{ component.language || 'python' }}
+      </span>
+      <TooltipRoot>
+        <TooltipTrigger as-child>
+          <button
+            @click="copyCode"
+            class="text-xs px-2.5 py-1 rounded border border-slate-600 text-slate-400 hover:border-sky-500/50 hover:text-sky-400 transition-colors cursor-pointer"
+          >
+            {{ copied ? 'Copiado!' : 'Copiar' }}
+          </button>
+        </TooltipTrigger>
+        <TooltipPortal>
+          <TooltipContent class="tooltip-content" :side-offset="5">
+            {{ copied ? 'Copiado al portapapeles' : 'Copiar codigo' }}
+            <TooltipArrow class="tooltip-arrow" />
+          </TooltipContent>
+        </TooltipPortal>
+      </TooltipRoot>
     </div>
-    <pre class="code-block"><code>{{ component.code }}</code></pre>
+    <pre class="bg-slate-950 p-4 overflow-x-auto text-sm font-mono leading-relaxed text-slate-300 m-0"><code>{{ component.code }}</code></pre>
   </div>
 </template>
-
-<style scoped>
-.code-wrapper {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.code-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--border);
-}
-.code-title { font-size: 0.85rem; color: var(--text-primary); flex: 1; }
-.code-lang { font-size: 0.7rem; color: var(--text-secondary); background: var(--bg-dark); padding: 0.15rem 0.5rem; border-radius: 4px; }
-.copy-btn {
-  font-size: 0.72rem; padding: 0.2rem 0.6rem;
-  background: transparent; border: 1px solid var(--border); border-radius: 4px;
-  color: var(--text-secondary); cursor: pointer;
-}
-.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
-.code-block {
-  background: var(--bg-code);
-  padding: 1rem 1.25rem;
-  margin: 0;
-  overflow-x: auto;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  color: #c9d1d9;
-}
-</style>

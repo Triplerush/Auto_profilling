@@ -1,5 +1,19 @@
 <script setup>
 import { ref, computed } from 'vue'
+import {
+  ScrollAreaRoot,
+  ScrollAreaViewport,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+} from 'reka-ui'
+import {
+  PaginationRoot,
+  PaginationList,
+  PaginationListItem,
+  PaginationPrev,
+  PaginationNext,
+  PaginationEllipsis,
+} from 'reka-ui'
 
 const props = defineProps({
   component: { type: Object, required: true },
@@ -8,7 +22,7 @@ const props = defineProps({
 const searchQuery = ref('')
 const sortCol = ref(null)
 const sortDir = ref('asc')
-const currentPage = ref(0)
+const currentPage = ref(1)
 const pageSize = props.component.config?.page_size || 10
 
 const columns = computed(() => props.component.data.columns)
@@ -36,7 +50,7 @@ const filteredRows = computed(() => {
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredRows.value.length / pageSize)))
 const paginatedRows = computed(() => {
-  const start = currentPage.value * pageSize
+  const start = (currentPage.value - 1) * pageSize
   return filteredRows.value.slice(start, start + pageSize)
 })
 
@@ -48,95 +62,104 @@ function toggleSort(idx) {
     sortCol.value = idx
     sortDir.value = 'asc'
   }
-  currentPage.value = 0
+  currentPage.value = 1
 }
 
 function onSearch() {
-  currentPage.value = 0
+  currentPage.value = 1
 }
 </script>
 
 <template>
-  <div class="df-wrapper">
-    <h4 v-if="component.title" class="df-title">{{ component.title }}</h4>
+  <div class="glass-card overflow-hidden animate-fade-in">
+    <h4 v-if="component.title" class="text-lg font-semibold text-slate-100 px-5 pt-5 pb-2">{{ component.title }}</h4>
 
     <input
       v-if="component.config?.searchable !== false"
       v-model="searchQuery"
       @input="onSearch"
-      class="df-search"
+      class="w-full bg-slate-900/50 border-b border-slate-700/50 px-5 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500/50 transition-colors"
       placeholder="Buscar..."
     />
 
-    <div class="df-table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th
-              v-for="(col, idx) in columns"
-              :key="idx"
-              @click="toggleSort(idx)"
-              :class="{ sortable: component.config?.sortable !== false }"
+    <ScrollAreaRoot class="w-full" type="hover">
+      <ScrollAreaViewport class="w-full">
+        <table class="w-full text-sm">
+          <thead>
+            <tr>
+              <th
+                v-for="(col, idx) in columns"
+                :key="idx"
+                @click="toggleSort(idx)"
+                :class="[
+                  'bg-slate-700/30 text-slate-300 font-medium text-left px-4 py-3 whitespace-nowrap sticky top-0',
+                  component.config?.sortable !== false ? 'cursor-pointer hover:text-sky-400 transition-colors select-none' : ''
+                ]"
+              >
+                {{ col }}
+                <span v-if="sortCol === idx" class="text-sky-400 ml-1 text-xs">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(row, ri) in paginatedRows"
+              :key="ri"
+              class="border-t border-slate-700/30 hover:bg-slate-700/20 transition-colors even:bg-slate-800/30"
             >
-              {{ col }}
-              <span v-if="sortCol === idx" class="sort-arrow">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(row, ri) in paginatedRows" :key="ri">
-            <td v-for="(cell, ci) in row" :key="ci">{{ cell ?? '' }}</td>
-          </tr>
-          <tr v-if="paginatedRows.length === 0">
-            <td :colspan="columns.length" class="empty">Sin resultados</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+              <td v-for="(cell, ci) in row" :key="ci" class="px-4 py-2.5 text-slate-300">
+                {{ cell ?? '' }}
+              </td>
+            </tr>
+            <tr v-if="paginatedRows.length === 0">
+              <td :colspan="columns.length" class="text-center text-slate-500 py-8">Sin resultados</td>
+            </tr>
+          </tbody>
+        </table>
+      </ScrollAreaViewport>
+      <ScrollAreaScrollbar orientation="horizontal" class="scrollbar-track">
+        <ScrollAreaThumb class="scrollbar-thumb" />
+      </ScrollAreaScrollbar>
+    </ScrollAreaRoot>
 
-    <div class="df-pagination" v-if="totalPages > 1">
-      <button :disabled="currentPage === 0" @click="currentPage--">&laquo; Anterior</button>
-      <span>{{ currentPage + 1 }} / {{ totalPages }}</span>
-      <button :disabled="currentPage >= totalPages - 1" @click="currentPage++">Siguiente &raquo;</button>
+    <div v-if="totalPages > 1" class="flex items-center justify-between px-5 py-3 border-t border-slate-700/50">
+      <span class="text-xs text-slate-500">{{ filteredRows.length }} filas</span>
+      <PaginationRoot
+        :total="filteredRows.length"
+        :items-per-page="pageSize"
+        :page="currentPage"
+        :sibling-count="1"
+        show-edges
+        @update:page="currentPage = $event"
+      >
+        <PaginationList v-slot="{ items }" class="flex items-center gap-1">
+          <PaginationPrev class="px-2.5 py-1.5 rounded-md text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">
+            &laquo;
+          </PaginationPrev>
+
+          <template v-for="(item, index) in items" :key="index">
+            <PaginationListItem
+              v-if="item.type === 'page'"
+              :value="item.value"
+              :class="[
+                'px-3 py-1.5 rounded-md text-sm transition-colors cursor-pointer',
+                item.value === currentPage
+                  ? 'bg-sky-500 text-white font-medium'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+              ]"
+            >
+              {{ item.value }}
+            </PaginationListItem>
+            <PaginationEllipsis v-else :index="index" class="px-2 text-slate-500">
+              ...
+            </PaginationEllipsis>
+          </template>
+
+          <PaginationNext class="px-2.5 py-1.5 rounded-md text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">
+            &raquo;
+          </PaginationNext>
+        </PaginationList>
+      </PaginationRoot>
     </div>
   </div>
 </template>
-
-<style scoped>
-.df-wrapper {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1rem;
-}
-.df-title { font-size: 0.9rem; color: var(--text-primary); margin-bottom: 0.75rem; }
-.df-search {
-  width: 100%; padding: 0.45rem 0.75rem; margin-bottom: 0.75rem;
-  background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px;
-  color: var(--text-primary); font-size: 0.8rem; outline: none;
-}
-.df-search:focus { border-color: var(--accent); }
-.df-table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-th, td { padding: 0.4rem 0.6rem; border: 1px solid var(--border); text-align: left; }
-th {
-  background: var(--bg-dark); color: var(--text-secondary); font-weight: 500;
-  position: sticky; top: 0; white-space: nowrap;
-}
-th.sortable { cursor: pointer; user-select: none; }
-th.sortable:hover { color: var(--accent); }
-.sort-arrow { font-size: 0.65rem; margin-left: 0.3rem; }
-td { color: var(--text-primary); }
-tr:nth-child(even) { background: rgba(15, 23, 42, 0.5); }
-.empty { text-align: center; color: var(--text-secondary); padding: 1.5rem; }
-.df-pagination {
-  display: flex; justify-content: center; align-items: center; gap: 1rem;
-  margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary);
-}
-.df-pagination button {
-  padding: 0.3rem 0.75rem; background: var(--bg-dark); border: 1px solid var(--border);
-  border-radius: 4px; color: var(--text-secondary); cursor: pointer; font-size: 0.75rem;
-}
-.df-pagination button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.df-pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
-</style>

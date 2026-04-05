@@ -1,57 +1,23 @@
 <script setup>
 import { useRouter } from 'vue-router'
+import { TooltipProvider } from 'reka-ui'
 
 const router = useRouter()
 </script>
 
 <template>
-  <header>
-    <div class="header-inner" @click="router.push('/')">
-      <h1 class="logo">Auto Profiling</h1>
-      <p class="subtitle">Plataforma Interactiva de Data Profiling</p>
-    </div>
-  </header>
-  <main>
-    <router-view />
-  </main>
+  <TooltipProvider :delay-duration="300" :skip-delay-duration="100">
+    <header class="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-700/50">
+      <div
+        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-3 cursor-pointer select-none"
+        @click="router.push('/')"
+      >
+        <h1 class="text-xl font-bold text-slate-100 hover:text-sky-400 transition-colors">Auto Profiling</h1>
+        <p class="text-xs text-slate-500 tracking-wide uppercase">Plataforma Interactiva de Data Profiling</p>
+      </div>
+    </header>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12">
+      <router-view />
+    </main>
+  </TooltipProvider>
 </template>
-
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-:root {
-  --bg-dark: #0f172a;
-  --bg-card: #1e293b;
-  --bg-code: #0d1117;
-  --border: #334155;
-  --accent: #38bdf8;
-  --accent-hover: #7dd3fc;
-  --text-primary: #e2e8f0;
-  --text-secondary: #94a3b8;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --success: #22c55e;
-  --purple: #a78bfa;
-  --green: #34d399;
-}
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--bg-dark);
-  color: var(--text-primary);
-  min-height: 100vh;
-}
-header {
-  width: 100%;
-  padding: 1rem 2rem;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-}
-.header-inner { cursor: pointer; user-select: none; }
-.logo { font-size: 1.3rem; color: var(--accent); }
-.subtitle { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.15rem; }
-main {
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 1.5rem;
-}
-</style>
