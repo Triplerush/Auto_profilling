@@ -171,5 +171,33 @@
         }
       ]
     }
-  ]
+  ],
+  "model": {
+    "artifact": "dota2-pro-matches_model.joblib",
+    "format": "joblib",
+    "input_schema": [
+      "team1_player_wr", "team2_player_wr", "player_skill_diff",
+      "team1_avg_exp", "team2_avg_exp", "exp_diff",
+      "bestOf_1.0", "bestOf_2.0", "bestOf_3.0", "bestOf_5.0",
+      "month", "hour"
+    ],
+    "sample_input": {
+      "team1_player_wr": 0.55,
+      "team2_player_wr": 0.48,
+      "player_skill_diff": 0.07,
+      "team1_avg_exp": 350.0,
+      "team2_avg_exp": 280.0,
+      "exp_diff": 70.0,
+      "bestOf_1.0": 0.0,
+      "bestOf_2.0": 0.0,
+      "bestOf_3.0": 1.0,
+      "bestOf_5.0": 0.0,
+      "month": 6,
+      "hour": 14
+    },
+    "metrics": {
+      "accuracy": 0.6669,
+      "f1_macro": 0.66
+    }
+  }
 }

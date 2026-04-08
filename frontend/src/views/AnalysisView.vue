@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { store } from '../store.js'
 import MetricGridRenderer from '../components/renderers/MetricGridRenderer.vue'
 import SectionRenderer from '../components/renderers/SectionRenderer.vue'
+import ModelPlayground from '../components/ModelPlayground.vue'
 import SkeletonLoader from '../components/SkeletonLoader.vue'
 import { useSEO } from '../composables/useSEO.js'
 
@@ -104,6 +105,13 @@ watch(() => store.currentAnalysis, (analysis) => {
           :show-separator="i < store.currentAnalysis.sections.length - 1"
         />
       </div>
+
+      <!-- Model Playground -->
+      <ModelPlayground
+        v-if="store.currentAnalysis.model"
+        :model="store.currentAnalysis.model"
+        :analysis-id="store.currentAnalysis.metadata.id"
+      />
     </template>
   </div>
 </template>

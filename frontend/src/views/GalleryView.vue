@@ -156,6 +156,7 @@ function openNotebook(id) {
           <span class="text-slate-500">{{ a.created_at.slice(0, 10) }}</span>
           <span class="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold">{{ a.kpi_count }} KPIs</span>
           <span class="px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 font-semibold">{{ a.section_count }} secciones</span>
+          <span v-if="a.has_model" class="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold">Modelo</span>
         </div>
         <div v-if="a.tags.length" class="flex gap-2 flex-wrap">
           <span

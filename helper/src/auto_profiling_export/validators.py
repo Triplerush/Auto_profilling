@@ -42,5 +42,18 @@ def validate_report(data: dict):
                     f"sections[{i}].components[{j}].type '{comp_type}' not in {VALID_COMPONENT_TYPES}"
                 )
 
+    model = data.get("model")
+    if model:
+        required_model_keys = {"artifact", "format", "input_schema", "sample_input", "metrics"}
+        missing = required_model_keys - set(model.keys())
+        if missing:
+            errors.append(f"model is missing keys: {missing}")
+        if not isinstance(model.get("input_schema"), list):
+            errors.append("model.input_schema must be a list")
+        if not isinstance(model.get("sample_input"), dict):
+            errors.append("model.sample_input must be a dict")
+        if not isinstance(model.get("metrics"), dict):
+            errors.append("model.metrics must be a dict")
+
     if errors:
         raise ValueError("Data Contract validation failed:\n" + "\n".join(f"  - {e}" for e in errors))

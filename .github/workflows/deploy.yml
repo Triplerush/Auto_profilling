@@ -47,7 +47,15 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_frontend:latest
 
-      # 5. Deploy al VPS via SSH (sin SCP)
+      # 5. Construir y subir imagen del Model Service
+      - name: Build and Push Model Service Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./model-service
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_model_service:latest
+
+      # 6. Deploy al VPS via SSH (sin SCP)
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -74,6 +82,7 @@ jobs:
             cp "$TMPDIR"/notebooks/*.ipynb "$DEPLOY_DIR/notebooks/" 2>/dev/null || true
             mkdir -p "$DEPLOY_DIR/results"
             cp "$TMPDIR"/results/*.json "$DEPLOY_DIR/results/" 2>/dev/null || true
+            cp "$TMPDIR"/results/*.joblib "$DEPLOY_DIR/results/" 2>/dev/null || true
 
             # Eliminar clon temporal
             rm -rf "$TMPDIR"
@@ -87,6 +96,7 @@ jobs:
             # Configurar imágenes inmutables
             export BACKEND_IMAGE="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_backend:latest"
             export FRONTEND_IMAGE="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_frontend:latest"
+            export MODEL_SERVICE_IMAGE="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_model_service:latest"
             export FRONTEND_PORT=80
 
             # Desplegar

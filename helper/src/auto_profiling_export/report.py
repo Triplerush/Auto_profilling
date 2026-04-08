@@ -67,6 +67,7 @@ class Report:
         }
         self.kpis: list[dict] = []
         self.sections: list[Section] = []
+        self.model: dict | None = None
 
     def add_kpi(self, label: str, value: str, description: str = "", severity: str = "ok"):
         self.kpis.append({
@@ -79,12 +80,19 @@ class Report:
     def add_section(self, section: Section):
         self.sections.append(section)
 
+    def set_model(self, model_info: dict):
+        """Attach model metadata (from export_model()) to the report."""
+        self.model = model_info
+
     def to_dict(self) -> dict:
-        return {
+        result = {
             "metadata": self.metadata,
             "kpis": self.kpis,
             "sections": [s.to_dict() for s in self.sections],
         }
+        if self.model:
+            result["model"] = self.model
+        return result
 
     def save(self, output_path: str | Path):
         data = self.to_dict()

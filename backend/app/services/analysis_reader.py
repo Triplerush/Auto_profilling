@@ -41,6 +41,7 @@ def list_analyses() -> list[AnalysisSummary]:
                 tags=meta.tags,
                 kpi_count=len(detail.kpis),
                 section_count=len(detail.sections),
+                has_model=detail.model is not None,
                 colab_url=meta.colab_url,
                 github_url=meta.github_url,
             ))

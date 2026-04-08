@@ -18,6 +18,16 @@ services:
     depends_on:
       - backend
 
+  model-service:
+    build: ./model-service
+    image: ${MODEL_SERVICE_IMAGE:-ghcr.io/triplerush/auto_profiling_model_service:latest}
+    container_name: profiling_model_service
+    restart: unless-stopped
+    environment:
+      - MODEL_DEBUG=false
+    volumes:
+      - ./results:/app/results
+
   nginx-proxy:
     image: nginx:alpine
     container_name: profiling_proxy
@@ -29,3 +39,4 @@ services:
     depends_on:
       - backend
       - frontend
+      - model-service

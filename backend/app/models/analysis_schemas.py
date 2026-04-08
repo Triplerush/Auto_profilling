@@ -2,12 +2,6 @@ from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, Field
 
-
-# ──────────────────────────────────────────────
-# Data Contract v2: Interactive Analysis Platform
-# ──────────────────────────────────────────────
-
-
 class AnalysisMetadata(BaseModel):
     id: str
     title: str
@@ -24,9 +18,6 @@ class KPI(BaseModel):
     value: str
     description: str = ""
     severity: Literal["ok", "warning", "critical"] = "ok"
-
-
-# ─── Component Types ───
 
 
 class ChartDataset(BaseModel):
@@ -113,7 +104,16 @@ Component = Annotated[
 ]
 
 
-# ─── Section & Detail ───
+
+
+class ModelInfo(BaseModel):
+    artifact: str
+    format: str = "joblib"
+    input_schema: list[str]
+    sample_input: dict[str, float | int]
+    metrics: dict[str, float]
+
+
 
 
 class AnalysisSection(BaseModel):
@@ -126,9 +126,9 @@ class AnalysisDetail(BaseModel):
     metadata: AnalysisMetadata
     kpis: list[KPI] = []
     sections: list[AnalysisSection] = []
+    model: ModelInfo | None = None
 
 
-# ─── API Responses ───
 
 
 class AnalysisSummary(BaseModel):
@@ -140,6 +140,7 @@ class AnalysisSummary(BaseModel):
     tags: list[str]
     kpi_count: int
     section_count: int
+    has_model: bool = False
     colab_url: str | None = None
     github_url: str | None = None
 
