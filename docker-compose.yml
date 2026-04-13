@@ -40,3 +40,10 @@ services:
       - backend
       - frontend
       - model-service
+    networks:
+      - default
+      - portfolio-net
+
+networks:
+  portfolio-net:
+    external: true

@@ -5,7 +5,7 @@ import AnalysisView from './views/AnalysisView.vue'
 import CompareView from './views/CompareView.vue'
 
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'gallery', component: GalleryView },
     { path: '/analysis/:id', name: 'analysis', component: AnalysisView, props: true },

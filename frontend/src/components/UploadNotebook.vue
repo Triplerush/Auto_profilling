@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { api } from '../api.js'
 
 const emit = defineEmits(['uploaded'])
 
@@ -37,7 +38,7 @@ async function submit() {
   form.append('file', selectedFile.value)
 
   try {
-    const res = await fetch('/v1/notebooks/upload', { method: 'POST', body: form })
+    const res = await fetch(api('/v1/notebooks/upload'), { method: 'POST', body: form })
     if (!res.ok) {
       const err = await res.json()
       throw new Error(err.detail || 'Error al subir')

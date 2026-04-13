@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { api } from './api.js'
 
 export const store = reactive({
   // Analyses (Data Contract)
@@ -16,7 +17,7 @@ export const store = reactive({
     this.loading = true
     this.error = ''
     try {
-      const res = await fetch('/v1/analyses')
+      const res = await fetch(api('/v1/analyses'))
       if (!res.ok) throw new Error('Error al cargar analisis')
       const data = await res.json()
       this.analyses = data.analyses
@@ -32,7 +33,7 @@ export const store = reactive({
     this.error = ''
     this.currentAnalysis = null
     try {
-      const res = await fetch(`/v1/analyses/${id}`)
+      const res = await fetch(api(`/v1/analyses/${id}`))
       if (!res.ok) throw new Error('Analisis no encontrado')
       this.currentAnalysis = await res.json()
     } catch (e) {
@@ -44,7 +45,7 @@ export const store = reactive({
 
   async fetchNotebooks() {
     try {
-      const res = await fetch('/v1/notebooks')
+      const res = await fetch(api('/v1/notebooks'))
       if (!res.ok) return
       const data = await res.json()
       this.notebooks = data.notebooks
@@ -58,7 +59,7 @@ export const store = reactive({
     this.error = ''
     this.currentNotebook = null
     try {
-      const res = await fetch(`/v1/notebooks/${id}`)
+      const res = await fetch(api(`/v1/notebooks/${id}`))
       if (!res.ok) throw new Error('Notebook no encontrado')
       this.currentNotebook = await res.json()
     } catch (e) {

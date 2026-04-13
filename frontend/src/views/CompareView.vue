@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { store } from '../store.js'
+import { api } from '../api.js'
 import MetricGridRenderer from '../components/renderers/MetricGridRenderer.vue'
 import SectionRenderer from '../components/renderers/SectionRenderer.vue'
 
@@ -23,8 +24,8 @@ async function loadComparison() {
   loading.value = true
   try {
     const [resA, resB] = await Promise.all([
-      fetch(`/v1/analyses/${selectedA.value}`),
-      fetch(`/v1/analyses/${selectedB.value}`),
+      fetch(api(`/v1/analyses/${selectedA.value}`)),
+      fetch(api(`/v1/analyses/${selectedB.value}`)),
     ])
     if (!resA.ok || !resB.ok) throw new Error('Error al cargar analisis')
     analysisA.value = await resA.json()

@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { api } from '../api.js'
 
 const emit = defineEmits(['uploaded'])
 
@@ -40,7 +41,7 @@ async function submit() {
   form.append('file', selectedFile.value)
 
   const isJson = selectedFile.value.name.endsWith('.json')
-  const url = isJson ? '/v1/analyses/upload' : '/v1/notebooks/upload'
+  const url = api(isJson ? '/v1/analyses/upload' : '/v1/notebooks/upload')
 
   try {
     const res = await fetch(url, { method: 'POST', body: form })

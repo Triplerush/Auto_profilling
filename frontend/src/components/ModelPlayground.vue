@@ -1,5 +1,6 @@
 <script setup>
 import { ref, reactive } from 'vue'
+import { api } from '../api.js'
 
 const props = defineProps({
   model: { type: Object, required: true },
@@ -22,7 +23,7 @@ async function predict() {
   result.value = null
 
   try {
-    const res = await fetch(`/v1/models/${props.analysisId}/predict`, {
+    const res = await fetch(api(`/v1/models/${props.analysisId}/predict`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ features: { ...formValues } }),
