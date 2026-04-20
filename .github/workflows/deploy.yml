@@ -92,7 +92,7 @@ jobs:
             # Login a GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u "${{ github.actor }}" --password-stdin
 
-            # Asegurar que la red portfolio-net existe (la crea core, pero por si profiling deploya primero)
+            # Asegurar que la red portfolio-net existe (la crea el compose de NPM; idempotente)
             docker network create portfolio-net 2>/dev/null || true
 
             # Navegar al directorio de deploy
@@ -102,9 +102,7 @@ jobs:
             export BACKEND_IMAGE="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_backend:latest"
             export FRONTEND_IMAGE="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_frontend:latest"
             export MODEL_SERVICE_IMAGE="${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/auto_profiling_model_service:latest"
-            # Puerto 80 es de core (nginx-global). Profiling se accede via portfolio-net.
-            # FRONTEND_PORT default=3000 queda como acceso directo de debug.
-            export FRONTEND_PORT=3000
+            # profiling_proxy ya no expone puerto publico: NPM lo alcanza via portfolio-net.
 
             # Desplegar
             docker compose down --remove-orphans || true

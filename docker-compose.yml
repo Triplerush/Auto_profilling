@@ -9,6 +9,8 @@ services:
     volumes:
       - ./notebooks:/app/notebooks
       - ./results:/app/results
+    networks:
+      - default
 
   frontend:
     build: ./frontend
@@ -17,6 +19,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    networks:
+      - default
 
   model-service:
     build: ./model-service
@@ -27,13 +31,20 @@ services:
       - MODEL_DEBUG=false
     volumes:
       - ./results:/app/results
+    networks:
+      - default
 
+  # Proxy interno que agrupa las 3 rutas del sub-proyecto.
+  # NPM (en el Droplet) reenvia triplerush.tech/profiling/* a
+  # profiling_proxy:3080 usando la red compartida portfolio-net.
+  # El mapeo 3080:3080 permite pruebas locales sin sudo ni choques
+  # con el :80 del host; en produccion NPM accede via portfolio-net.
   nginx-proxy:
     image: nginx:alpine
     container_name: profiling_proxy
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "3080:3080"
     volumes:
       - ./proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
