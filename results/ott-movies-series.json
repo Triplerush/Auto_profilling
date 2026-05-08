@@ -1,0 +1,938 @@
+{
+  "metadata": {
+    "id": "ott-movies-series-analisis",
+    "title": "OTT Movies & Series - Analisis",
+    "description": "Prediccion de rating (regresion) + sistema de recomendacion content-based con TF-IDF en plataformas de streaming.",
+    "author": "Triplerush",
+    "created_at": "2026-05-08T21:06:59.084135+00:00",
+    "tags": [
+      "machine-learning",
+      "ott",
+      "streaming",
+      "regresion",
+      "nlp",
+      "recomendacion",
+      "xgboost"
+    ],
+    "colab_url": null,
+    "github_url": null
+  },
+  "kpis": [
+    {
+      "label": "Filas originales",
+      "value": "2,500",
+      "description": "Dataset crudo cargado",
+      "severity": "ok"
+    },
+    {
+      "label": "Filas modelo",
+      "value": "2,500",
+      "description": "Tras limpieza + Feature Engineering (100.0%)",
+      "severity": "ok"
+    },
+    {
+      "label": "R2 XGBoost",
+      "value": "-0.185",
+      "description": "Coeficiente de determinacion en test (gap 0.694)",
+      "severity": "ok"
+    },
+    {
+      "label": "MAE XGBoost",
+      "value": "0.865",
+      "description": "Error absoluto medio en escala 1-10",
+      "severity": "ok"
+    },
+    {
+      "label": "RMSE XGBoost",
+      "value": "1.068",
+      "description": "Raiz del error cuadratico medio",
+      "severity": "ok"
+    },
+    {
+      "label": "Features",
+      "value": "28",
+      "description": "Columnas del modelo final tras One-Hot",
+      "severity": "ok"
+    },
+    {
+      "label": "Vocabulario TF-IDF",
+      "value": "133",
+      "description": "Tokens del recomendador NLP",
+      "severity": "ok"
+    }
+  ],
+  "sections": [
+    {
+      "title": "Ingesta y Limpieza",
+      "description": "Dataset original: 2,500 filas x 19 columnas.",
+      "components": [
+        {
+          "type": "metric_grid",
+          "title": "Resumen de Limpieza",
+          "metrics": [
+            {
+              "label": "Filas originales",
+              "value": "2,500",
+              "severity": "ok"
+            },
+            {
+              "label": "Columnas eliminadas",
+              "value": "10",
+              "severity": "warning"
+            },
+            {
+              "label": "Dataset limpio",
+              "value": "2,500 x 14",
+              "severity": "ok"
+            },
+            {
+              "label": "Duplicados exactos",
+              "value": "0",
+              "severity": "ok"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Analisis Exploratorio (EDA)",
+      "description": "Distribucion del rating, plataformas y validacion del Feature Engineering",
+      "components": [
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "title": "Distribucion del Target (rating)",
+          "data": {
+            "labels": [
+              "5.0-5.2",
+              "5.2-5.5",
+              "5.5-5.7",
+              "5.7-5.9",
+              "5.9-6.1",
+              "6.1-6.3",
+              "6.3-6.6",
+              "6.6-6.8",
+              "6.8-7.0",
+              "7.0-7.2",
+              "7.2-7.5",
+              "7.5-7.7",
+              "7.7-7.9",
+              "7.9-8.2",
+              "8.2-8.4",
+              "8.4-8.6",
+              "8.6-8.8",
+              "8.8-9.1",
+              "9.1-9.3",
+              "9.3-9.5"
+            ],
+            "datasets": [
+              {
+                "label": "Titulos",
+                "data": [
+                  31,
+                  24,
+                  38,
+                  37,
+                  110,
+                  88,
+                  92,
+                  148,
+                  251,
+                  204,
+                  180,
+                  187,
+                  276,
+                  169,
+                  155,
+                  140,
+                  156,
+                  75,
+                  54,
+                  85
+                ]
+              }
+            ]
+          },
+          "config": {
+            "x_label": "Rating (bins)",
+            "y_label": "Frecuencia"
+          }
+        },
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "title": "Distribucion por Plataforma",
+          "data": {
+            "labels": [
+              "Prime Video",
+              "Netflix",
+              "Hotstar"
+            ],
+            "datasets": [
+              {
+                "label": "Titulos",
+                "data": [
+                  852,
+                  824,
+                  824
+                ]
+              }
+            ]
+          },
+          "config": {
+            "x_label": "Plataforma",
+            "y_label": "Cantidad"
+          }
+        },
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "title": "Rating promedio por Genero",
+          "data": {
+            "labels": [
+              "Action",
+              "Sci-Fi",
+              "Fantasy",
+              "Drama",
+              "Comedy",
+              "Crime",
+              "Thriller"
+            ],
+            "datasets": [
+              {
+                "label": "Rating promedio",
+                "data": [
+                  7.524,
+                  7.516,
+                  7.49,
+                  7.488,
+                  7.477,
+                  7.476,
+                  7.434
+                ]
+              }
+            ]
+          },
+          "config": {
+            "x_label": "Genero",
+            "y_label": "Rating promedio"
+          }
+        },
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "title": "Rating promedio segun votes_per_year",
+          "data": {
+            "labels": [
+              "(79.999, 7528.378]",
+              "(7528.378, 14768.95]",
+              "(14768.95, 22410.8]",
+              "(22410.8, 40858.2]",
+              "(40858.2, 199699.0]"
+            ],
+            "datasets": [
+              {
+                "label": "Rating promedio",
+                "data": [
+                  7.54,
+                  7.497,
+                  7.506,
+                  7.448,
+                  7.445
+                ]
+              },
+              {
+                "label": "Titulos",
+                "data": [
+                  500,
+                  500,
+                  500,
+                  500,
+                  500
+                ]
+              }
+            ]
+          },
+          "config": {
+            "x_label": "votes_per_year (bins)",
+            "y_label": "Valor"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Estadisticas de Features",
+      "description": "Descriptivos de las variables numericas y derivadas",
+      "components": [
+        {
+          "type": "dataframe",
+          "title": "Estadisticas descriptivas (incluye target)",
+          "data": {
+            "columns": [
+              "Feature",
+              "Count",
+              "Mean",
+              "Std",
+              "Min",
+              "Max"
+            ],
+            "rows": [
+              [
+                "rating",
+                2500.0,
+                7.4872,
+                0.9802,
+                5.0,
+                9.5
+              ],
+              [
+                "years_since_release",
+                2500.0,
+                5.4212,
+                2.8619,
+                1.0,
+                10.0
+              ],
+              [
+                "duration_log",
+                2500.0,
+                5.8826,
+                1.1152,
+                4.3944,
+                7.6014
+              ],
+              [
+                "votes_log",
+                2500.0,
+                11.2253,
+                0.9473,
+                6.2634,
+                12.2051
+              ],
+              [
+                "votes_per_year",
+                2500.0,
+                30131.2133,
+                35744.5353,
+                80.0,
+                199699.0
+              ],
+              [
+                "is_long_content",
+                2500.0,
+                0.4996,
+                0.5001,
+                0.0,
+                1.0
+              ]
+            ]
+          },
+          "config": {
+            "sortable": true,
+            "searchable": false,
+            "page_size": 10
+          }
+        }
+      ]
+    },
+    {
+      "title": "Resultados del Modelo",
+      "description": "Comparacion Dummy / Random Forest / XGBoost con split temporal",
+      "components": [
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "title": "Comparacion de Errores (menor = mejor)",
+          "data": {
+            "labels": [
+              "Dummy (media)",
+              "Random Forest",
+              "XGBoost"
+            ],
+            "datasets": [
+              {
+                "label": "MAE Test",
+                "data": [
+                  0.8032,
+                  0.8051,
+                  0.865
+                ]
+              },
+              {
+                "label": "RMSE Test",
+                "data": [
+                  0.9813,
+                  0.9879,
+                  1.0683
+                ]
+              }
+            ]
+          },
+          "config": {
+            "x_label": "Modelo",
+            "y_label": "Error"
+          }
+        },
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "title": "R2 en Test (mayor = mejor, Dummy es la referencia de azar)",
+          "data": {
+            "labels": [
+              "Dummy (media)",
+              "Random Forest",
+              "XGBoost"
+            ],
+            "datasets": [
+              {
+                "label": "R2 Test",
+                "data": [
+                  -0.0,
+                  -0.0135,
+                  -0.1853
+                ]
+              }
+            ]
+          },
+          "config": {
+            "x_label": "Modelo",
+            "y_label": "R2"
+          }
+        },
+        {
+          "type": "dataframe",
+          "title": "Tabla comparativa de metricas",
+          "data": {
+            "columns": [
+              "Modelo",
+              "MAE Test",
+              "RMSE Test",
+              "R2 Test"
+            ],
+            "rows": [
+              [
+                "Dummy (media)",
+                0.8032,
+                0.9813,
+                -0.0
+              ],
+              [
+                "Random Forest",
+                0.8051,
+                0.9879,
+                -0.0135
+              ],
+              [
+                "XGBoost",
+                0.865,
+                1.0683,
+                -0.1853
+              ]
+            ]
+          },
+          "config": {
+            "sortable": true,
+            "searchable": false,
+            "page_size": 10
+          }
+        },
+        {
+          "type": "dataframe",
+          "title": "Muestra de predicciones (primeras 30) - Random Forest",
+          "data": {
+            "columns": [
+              "rating_real",
+              "rating_predicho",
+              "residuo"
+            ],
+            "rows": [
+              [
+                5.6,
+                7.3,
+                -1.7
+              ],
+              [
+                8.4,
+                7.32,
+                1.08
+              ],
+              [
+                7.9,
+                7.06,
+                0.84
+              ],
+              [
+                7.6,
+                7.41,
+                0.19
+              ],
+              [
+                8.2,
+                7.49,
+                0.71
+              ],
+              [
+                7.6,
+                7.62,
+                -0.02
+              ],
+              [
+                8.0,
+                7.54,
+                0.46
+              ],
+              [
+                7.5,
+                7.73,
+                -0.23
+              ],
+              [
+                7.0,
+                7.56,
+                -0.56
+              ],
+              [
+                6.6,
+                7.46,
+                -0.86
+              ],
+              [
+                6.9,
+                7.39,
+                -0.49
+              ],
+              [
+                5.5,
+                7.55,
+                -2.05
+              ],
+              [
+                6.6,
+                7.72,
+                -1.12
+              ],
+              [
+                6.4,
+                7.42,
+                -1.02
+              ],
+              [
+                6.5,
+                7.45,
+                -0.95
+              ],
+              [
+                7.4,
+                7.66,
+                -0.26
+              ],
+              [
+                6.8,
+                7.76,
+                -0.96
+              ],
+              [
+                6.3,
+                7.57,
+                -1.27
+              ],
+              [
+                7.7,
+                7.41,
+                0.29
+              ],
+              [
+                8.9,
+                7.48,
+                1.42
+              ],
+              [
+                7.1,
+                7.67,
+                -0.57
+              ],
+              [
+                9.0,
+                7.69,
+                1.31
+              ],
+              [
+                6.1,
+                7.58,
+                -1.48
+              ],
+              [
+                7.4,
+                7.41,
+                -0.01
+              ],
+              [
+                5.7,
+                7.29,
+                -1.59
+              ],
+              [
+                5.5,
+                7.27,
+                -1.77
+              ],
+              [
+                5.6,
+                7.32,
+                -1.72
+              ],
+              [
+                7.1,
+                7.09,
+                0.01
+              ],
+              [
+                8.3,
+                7.66,
+                0.64
+              ],
+              [
+                6.9,
+                7.48,
+                -0.58
+              ]
+            ]
+          },
+          "config": {
+            "sortable": true,
+            "searchable": false,
+            "page_size": 10
+          }
+        }
+      ]
+    },
+    {
+      "title": "Feature Importance",
+      "description": "Importancia de cada variable en el modelo Random Forest final",
+      "components": [
+        {
+          "type": "chart",
+          "chart_type": "bar",
+          "title": "Feature Importance - Random Forest",
+          "data": {
+            "labels": [
+              "votes_log",
+              "duration_log",
+              "votes_per_year",
+              "years_since_release",
+              "platform_Hotstar",
+              "platform_Netflix",
+              "language_Hindi",
+              "platform_Prime Video",
+              "language_Spanish",
+              "genre_Crime",
+              "genre_Thriller",
+              "language_English",
+              "genre_Fantasy",
+              "country_UK",
+              "country_Germany",
+              "genre_Drama",
+              "country_Spain",
+              "language_German"
+            ],
+            "datasets": [
+              {
+                "label": "Feature Importance - Random Forest",
+                "data": [
+                  0.2584,
+                  0.2317,
+                  0.2033,
+                  0.0453,
+                  0.0198,
+                  0.0189,
+                  0.0174,
+                  0.0169,
+                  0.0152,
+                  0.0149,
+                  0.0129,
+                  0.0125,
+                  0.012,
+                  0.0113,
+                  0.0108,
+                  0.0108,
+                  0.0106,
+                  0.0106
+                ]
+              }
+            ]
+          },
+          "config": {
+            "indexAxis": "y",
+            "x_label": "Importancia"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Sistema de Recomendacion Content-Based",
+      "description": "TF-IDF + similitud coseno sobre 'combined_features'. Dado un titulo, devuelve los N mas parecidos.",
+      "components": [
+        {
+          "type": "text",
+          "content": "**Como funciona:**\n\n- Se vectorizan las descripciones (`combined_features`) usando **TF-IDF** con n-gramas de 1 y 2 palabras.\n- Vocabulario aprendido: **133 tokens**.\n- Similitud entre titulos: **distancia coseno** entre vectores TF-IDF.\n- No necesita `rating` como input, asi que es complementario al modelo de regresion."
+        },
+        {
+          "type": "text",
+          "content": "### Recomendaciones para: *Silent Code 146*"
+        },
+        {
+          "type": "dataframe",
+          "title": "Top 5 similares a 'Silent Code 146'",
+          "data": {
+            "columns": [
+              "title",
+              "type",
+              "genre",
+              "platform",
+              "similarity"
+            ],
+            "rows": [
+              [
+                "Last Kingdom 985",
+                "Series",
+                "Drama",
+                "Netflix",
+                0.7505
+              ],
+              [
+                "Crimson Truth 2358",
+                "Series",
+                "Drama",
+                "Netflix",
+                0.6973
+              ],
+              [
+                "Fading Light 614",
+                "Series",
+                "Drama",
+                "Netflix",
+                0.6973
+              ],
+              [
+                "Cyber Night 1445",
+                "Series",
+                "Drama",
+                "Netflix",
+                0.6973
+              ],
+              [
+                "Broken Empire 1135",
+                "Series",
+                "Drama",
+                "Netflix",
+                0.6973
+              ]
+            ]
+          },
+          "config": {
+            "sortable": true,
+            "searchable": false,
+            "page_size": 10
+          }
+        },
+        {
+          "type": "text",
+          "content": "### Recomendaciones para: *Crimson Truth 452*"
+        },
+        {
+          "type": "dataframe",
+          "title": "Top 5 similares a 'Crimson Truth 452'",
+          "data": {
+            "columns": [
+              "title",
+              "type",
+              "genre",
+              "platform",
+              "similarity"
+            ],
+            "rows": [
+              [
+                "Last Kingdom 185",
+                "Movie",
+                "Action",
+                "Netflix",
+                0.7504
+              ],
+              [
+                "Fading Light 1299",
+                "Movie",
+                "Action",
+                "Netflix",
+                0.6972
+              ],
+              [
+                "Silent Code 347",
+                "Movie",
+                "Action",
+                "Netflix",
+                0.6972
+              ],
+              [
+                "Dark Horizon 1127",
+                "Movie",
+                "Action",
+                "Netflix",
+                0.6972
+              ],
+              [
+                "Echoes of Time 1141",
+                "Movie",
+                "Action",
+                "Netflix",
+                0.6972
+              ]
+            ]
+          },
+          "config": {
+            "sortable": true,
+            "searchable": false,
+            "page_size": 10
+          }
+        },
+        {
+          "type": "text",
+          "content": "### Recomendaciones para: *Cyber Night 1169*"
+        },
+        {
+          "type": "dataframe",
+          "title": "Top 5 similares a 'Cyber Night 1169'",
+          "data": {
+            "columns": [
+              "title",
+              "type",
+              "genre",
+              "platform",
+              "similarity"
+            ],
+            "rows": [
+              [
+                "Last Kingdom 258",
+                "Series",
+                "Thriller",
+                "Prime Video",
+                0.7943
+              ],
+              [
+                "Fading Light 2009",
+                "Series",
+                "Thriller",
+                "Prime Video",
+                0.7477
+              ],
+              [
+                "Broken Empire 863",
+                "Series",
+                "Thriller",
+                "Prime Video",
+                0.7477
+              ],
+              [
+                "Silent Code 1476",
+                "Series",
+                "Thriller",
+                "Prime Video",
+                0.7477
+              ],
+              [
+                "Echoes of Time 2322",
+                "Series",
+                "Thriller",
+                "Prime Video",
+                0.7477
+              ]
+            ]
+          },
+          "config": {
+            "sortable": true,
+            "searchable": false,
+            "page_size": 10
+          }
+        }
+      ]
+    },
+    {
+      "title": "Conclusiones",
+      "description": "",
+      "components": [
+        {
+          "type": "text",
+          "content": "## Hallazgos principales\n\n1. **Regresion sobre `rating` con R2 de -0.185 en test** y MAE de 0.865 puntos en escala 1-10. El modelo no memoriza (gap train/test bajo).\n2. **Eliminar `weighted_rating`, `engagement_score`, `popularity_score` y `trending_score` fue critico**: la documentacion las describe como derivadas de rating/votes y son fuga de datos.\n3. **`votes_per_year` y los dummies de genero/plataforma** dominan la importancia. La popularidad anualizada descuenta el sesgo de antiguedad.\n4. **El recomendador TF-IDF** complementa el modelo: el regresor estima *que tan bueno* sera un titulo; el recomendador encuentra titulos *similares en contenido* a uno que ya gusto.\n\n## Proximos pasos\n\n- Reemplazar TF-IDF por **embeddings densos** (sentence-transformers) para el recomendador.\n- Combinar la prediccion del regresor con la similitud del recomendador en un *re-ranker* hibrido.\n- Anadir datos externos del cast/director y entrenar un modelo calibrado para producir probabilidades de \"hit\"."
+        }
+      ]
+    }
+  ],
+  "model": {
+    "artifact": "ott-movies-series_model.joblib",
+    "format": "joblib",
+    "input_schema": [
+      "years_since_release",
+      "duration_log",
+      "is_long_content",
+      "votes_log",
+      "votes_per_year",
+      "type_Movie",
+      "type_Series",
+      "genre_Action",
+      "genre_Comedy",
+      "genre_Crime",
+      "genre_Drama",
+      "genre_Fantasy",
+      "genre_Sci-Fi",
+      "genre_Thriller",
+      "platform_Hotstar",
+      "platform_Netflix",
+      "platform_Prime Video",
+      "country_Germany",
+      "country_India",
+      "country_South Korea",
+      "country_Spain",
+      "country_UK",
+      "country_USA",
+      "language_English",
+      "language_German",
+      "language_Hindi",
+      "language_Korean",
+      "language_Spanish"
+    ],
+    "sample_input": {
+      "years_since_release": 2.0,
+      "duration_log": 4.9767,
+      "is_long_content": 0.0,
+      "votes_log": 11.7532,
+      "votes_per_year": 63580.5,
+      "type_Movie": 1.0,
+      "type_Series": 0.0,
+      "genre_Action": 0.0,
+      "genre_Comedy": 0.0,
+      "genre_Crime": 1.0,
+      "genre_Drama": 0.0,
+      "genre_Fantasy": 0.0,
+      "genre_Sci-Fi": 0.0,
+      "genre_Thriller": 0.0,
+      "platform_Hotstar": 1.0,
+      "platform_Netflix": 0.0,
+      "platform_Prime Video": 0.0,
+      "country_Germany": 0.0,
+      "country_India": 0.0,
+      "country_South Korea": 0.0,
+      "country_Spain": 0.0,
+      "country_UK": 1.0,
+      "country_USA": 0.0,
+      "language_English": 0.0,
+      "language_German": 0.0,
+      "language_Hindi": 0.0,
+      "language_Korean": 0.0,
+      "language_Spanish": 1.0
+    },
+    "metrics": {
+      "mae": 0.8051,
+      "rmse": 0.9879,
+      "r2": -0.0135
+    }
+  }
+}

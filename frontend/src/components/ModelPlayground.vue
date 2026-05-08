@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { api } from '../api.js'
 
 const props = defineProps({
@@ -7,11 +7,91 @@ const props = defineProps({
   analysisId: { type: String, required: true },
 })
 
+// Detect One-Hot dummy groups: columns that share a prefix and whose
+// sample values are all 0 or 1. Renders them as a single dropdown.
+// Anything else (continuous numerics, single binary flags) stays as number input.
+const groups = computed(() => {
+  const candidates = {}
+  for (const col of props.model.input_schema) {
+    const idx = col.lastIndexOf('_')
+    if (idx === -1) continue
+    const prefix = col.substring(0, idx)
+    const value = col.substring(idx + 1)
+    if (!candidates[prefix]) candidates[prefix] = []
+    candidates[prefix].push({ col, value })
+  }
+  const result = {}
+  for (const [prefix, members] of Object.entries(candidates)) {
+    if (members.length < 2) continue
+    const allBinary = members.every(m => {
+      const v = props.model.sample_input[m.col]
+      return v === 0 || v === 1
+    })
+    if (allBinary) result[prefix] = members
+  }
+  return result
+})
+
+const groupedCols = computed(() => {
+  const set = new Set()
+  for (const members of Object.values(groups.value)) {
+    for (const m of members) set.add(m.col)
+  }
+  return set
+})
+
+// Ordered render list. Each group is emitted once at the position of its
+// first member in the original input_schema, so field order stays predictable.
+const fields = computed(() => {
+  const seen = new Set()
+  const out = []
+  for (const col of props.model.input_schema) {
+    if (groupedCols.value.has(col)) {
+      for (const [prefix, members] of Object.entries(groups.value)) {
+        if (members.some(m => m.col === col)) {
+          if (!seen.has(prefix)) {
+            seen.add(prefix)
+            out.push({ kind: 'group', prefix, members })
+          }
+          break
+        }
+      }
+    } else {
+      out.push({ kind: 'number', col })
+    }
+  }
+  return out
+})
+
+// Raw values that get sent to the API (one entry per input_schema column).
 const formValues = reactive(
   Object.fromEntries(
     props.model.input_schema.map(col => [col, props.model.sample_input[col] ?? 0])
   )
 )
+
+// prefix -> currently active column name for each group dropdown.
+const groupSelection = reactive({})
+function initGroupSelection() {
+  for (const [prefix, members] of Object.entries(groups.value)) {
+    const active = members.find(m => props.model.sample_input[m.col] === 1)
+    groupSelection[prefix] = active ? active.col : members[0].col
+  }
+}
+initGroupSelection()
+
+function onGroupChange(prefix, selectedCol) {
+  for (const m of groups.value[prefix]) {
+    formValues[m.col] = m.col === selectedCol ? 1 : 0
+  }
+}
+
+function resetToSample() {
+  for (const col of props.model.input_schema) {
+    formValues[col] = props.model.sample_input[col] ?? 0
+  }
+  initGroupSelection()
+}
 
 const loading = ref(false)
 const error = ref('')
@@ -44,9 +124,18 @@ function formatMetricName(key) {
   return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
-function formatMetricValue(value) {
-  if (value <= 1) return `${(value * 100).toFixed(1)}%`
-  return value.toFixed(2)
+const PERCENTAGE_METRICS = new Set([
+  'accuracy', 'precision', 'recall',
+  'f1', 'f1_macro', 'f1_micro', 'f1_weighted',
+  'auc', 'roc_auc', 'pr_auc',
+])
+
+function formatMetricValue(value, key) {
+  if (typeof value !== 'number') return String(value)
+  if (PERCENTAGE_METRICS.has(String(key).toLowerCase())) {
+    return `${(value * 100).toFixed(1)}%`
+  }
+  return value.toFixed(3)
 }
 </script>
 
@@ -68,7 +157,7 @@ function formatMetricValue(value) {
         :key="key"
         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
       >
-        {{ formatMetricName(key) }}: {{ formatMetricValue(value) }}
+        {{ formatMetricName(key) }}: {{ formatMetricValue(value, key) }}
       </span>
       <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20">
         {{ model.format.toUpperCase() }}
@@ -77,18 +166,38 @@ function formatMetricValue(value) {
 
     <!-- Form -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-      <div v-for="col in model.input_schema" :key="col" class="flex flex-col gap-1.5">
-        <label :for="`field-${col}`" class="text-xs font-medium text-muted truncate" :title="col">
-          {{ col }}
-        </label>
-        <input
-          :id="`field-${col}`"
-          v-model.number="formValues[col]"
-          type="number"
-          step="any"
-          class="w-full px-3 py-2 rounded-lg text-sm text-heading bg-[var(--bg-card-solid,rgb(30_41_59/0.8))] border border-[var(--border-card)] focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition-colors"
-        />
-      </div>
+      <template v-for="field in fields" :key="field.kind === 'group' ? `g:${field.prefix}` : `n:${field.col}`">
+        <!-- Grouped One-Hot columns rendered as a single select -->
+        <div v-if="field.kind === 'group'" class="flex flex-col gap-1.5">
+          <label :for="`field-${field.prefix}`" class="text-xs font-medium text-muted truncate" :title="field.prefix">
+            {{ field.prefix }}
+          </label>
+          <select
+            :id="`field-${field.prefix}`"
+            :value="groupSelection[field.prefix]"
+            @change="onGroupChange(field.prefix, $event.target.value)"
+            class="w-full px-3 py-2 rounded-lg text-sm text-heading bg-[var(--bg-card-solid,rgb(30_41_59/0.8))] border border-[var(--border-card)] focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition-colors"
+          >
+            <option v-for="m in field.members" :key="m.col" :value="m.col">
+              {{ m.value }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Ungrouped continuous / single binary fields -->
+        <div v-else class="flex flex-col gap-1.5">
+          <label :for="`field-${field.col}`" class="text-xs font-medium text-muted truncate" :title="field.col">
+            {{ field.col }}
+          </label>
+          <input
+            :id="`field-${field.col}`"
+            v-model.number="formValues[field.col]"
+            type="number"
+            step="any"
+            class="w-full px-3 py-2 rounded-lg text-sm text-heading bg-[var(--bg-card-solid,rgb(30_41_59/0.8))] border border-[var(--border-card)] focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition-colors"
+          />
+        </div>
+      </template>
     </div>
 
     <!-- Predict button -->
@@ -109,7 +218,7 @@ function formatMetricValue(value) {
       </button>
 
       <button
-        @click="Object.assign(formValues, model.sample_input)"
+        @click="resetToSample"
         class="text-xs text-muted hover:text-sky-400 transition-colors cursor-pointer"
       >
         Restaurar valores de ejemplo
