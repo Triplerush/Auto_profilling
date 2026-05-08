@@ -3,19 +3,11 @@ import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { store } from '../store.js'
 import { useSEO } from '../composables/useSEO.js'
-import UploadFile from '../components/UploadFile.vue'
 import SkeletonLoader from '../components/SkeletonLoader.vue'
 import {
   CollapsibleRoot,
   CollapsibleTrigger,
   CollapsibleContent,
-  DialogRoot,
-  DialogTrigger,
-  DialogPortal,
-  DialogOverlay,
-  DialogContent,
-  DialogTitle,
-  DialogClose,
 } from 'reka-ui'
 
 const router = useRouter()
@@ -72,33 +64,6 @@ function openNotebook(id) {
           </svg>
           Comparar
         </button>
-
-      <DialogRoot>
-        <DialogTrigger
-          class="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-semibold text-sm transition-colors cursor-pointer"
-        >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Subir Archivo
-        </DialogTrigger>
-        <DialogPortal>
-          <DialogOverlay class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-fade-in" />
-          <DialogContent class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg animate-scale-in">
-            <div class="glass-card p-6">
-              <div class="flex items-center justify-between mb-4">
-                <DialogTitle class="text-lg font-semibold text-slate-100">Subir Archivo</DialogTitle>
-                <DialogClose class="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer p-1">
-                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </DialogClose>
-              </div>
-              <UploadFile @uploaded="store.fetchAnalyses(); store.fetchNotebooks()" />
-            </div>
-          </DialogContent>
-        </DialogPortal>
-      </DialogRoot>
       </div>
     </div>
 
@@ -176,7 +141,7 @@ function openNotebook(id) {
 
     <div v-else-if="!store.loading && !store.error && !store.analyses.length" class="text-center py-16 text-slate-500">
       <p>No hay analisis disponibles.</p>
-      <p class="text-sm mt-1">Exporta un Data Contract desde tu notebook o sube un archivo <code class="bg-slate-700/50 text-sky-300 px-1.5 py-0.5 rounded text-sm">.json</code>.</p>
+      <p class="text-sm mt-1">Exporta un Data Contract desde el flujo interno del proyecto.</p>
     </div>
 
     <!-- Legacy Notebooks -->
