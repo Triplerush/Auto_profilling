@@ -106,12 +106,22 @@ Component = Annotated[
 
 
 
+class RecommendationInfo(BaseModel):
+    enabled: bool = True
+    label: str = "Top recomendaciones"
+    rating_field: str = "rating"
+    match_fields: list[str] = []
+    display_fields: list[str] = []
+    top_k: int = 5
+
+
 class ModelInfo(BaseModel):
     artifact: str
     format: str = "joblib"
     input_schema: list[str]
     sample_input: dict[str, float | int]
     metrics: dict[str, float]
+    recommendation: RecommendationInfo | None = None
 
 
 

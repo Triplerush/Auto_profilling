@@ -84,6 +84,59 @@ class Report:
         """Attach model metadata (from export_model()) to the report."""
         self.model = model_info
 
+    def set_catalog(
+        self,
+        df,
+        display_fields: list[str],
+        match_fields: list[str],
+        rating_field: str = "rating",
+        top_k: int = 5,
+        label: str = "Top recomendaciones",
+    ):
+        """Attach a catalog of items to the model so the platform can serve
+        recommendations on top of the predictor.
+
+        Must be called AFTER set_model(). The catalog is embedded in
+        ``model.recommendation.catalog`` and consumed by the model-service
+        ``/v1/models/{id}/recommend`` endpoint.
+
+        Args:
+            df: pandas DataFrame whose rows become catalog items.
+            display_fields: columns shown to the user for each item.
+            match_fields: categorical columns the recommender uses to score
+                similarity against the user's one-hot input (e.g. genre, platform).
+            rating_field: numeric column used to rank items vs the prediction.
+            top_k: default number of items to return.
+            label: human-readable title shown in the UI.
+        """
+        if self.model is None:
+            raise RuntimeError("set_catalog() requires set_model() to be called first")
+
+        keep = list({*display_fields, *match_fields, rating_field})
+        missing = [c for c in keep if c not in df.columns]
+        if missing:
+            raise ValueError(f"Catalog DataFrame is missing columns: {missing}")
+
+        catalog = []
+        for _, row in df[keep].iterrows():
+            item = {}
+            for c in keep:
+                v = row[c]
+                if hasattr(v, "item"):
+                    v = v.item()
+                item[c] = v
+            catalog.append(item)
+
+        self.model["recommendation"] = {
+            "enabled": True,
+            "label": label,
+            "rating_field": rating_field,
+            "match_fields": list(match_fields),
+            "display_fields": list(display_fields),
+            "top_k": top_k,
+            "catalog": catalog,
+        }
+
     def to_dict(self) -> dict:
         result = {
             "metadata": self.metadata,

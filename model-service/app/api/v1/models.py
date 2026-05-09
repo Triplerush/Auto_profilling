@@ -6,9 +6,12 @@ from app.models.schemas import (
     ModelStats,
     PredictRequest,
     PredictResponse,
+    RecommendRequest,
+    RecommendResponse,
 )
 from app.services.model_registry import registry
 from app.services.predictor import predict
+from app.services.recommender import recommend
 
 router = APIRouter(prefix="/v1/models", tags=["models"])
 
@@ -25,6 +28,7 @@ def list_models():
             input_schema=e.input_schema,
             sample_input=e.sample_input,
             metrics=e.metrics,
+            recommendation=e.recommendation,
         )
         for e in entries
     ]
@@ -44,6 +48,7 @@ def get_model(model_id: str):
         input_schema=entry.input_schema,
         sample_input=entry.sample_input,
         metrics=entry.metrics,
+        recommendation=entry.recommendation,
     )
 
 
@@ -66,6 +71,22 @@ def predict_model(model_id: str, request: PredictRequest):
         confidence=result["confidence"],
         input_received=request.features,
     )
+
+
+@router.post("/{model_id}/recommend", response_model=RecommendResponse)
+def recommend_model(model_id: str, request: RecommendRequest):
+    entry = registry.get_model(model_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found")
+
+    try:
+        result = recommend(entry, request.features, top_k=request.top_k)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return RecommendResponse(**result)
 
 
 @router.get("/{model_id}/stats", response_model=ModelStats)

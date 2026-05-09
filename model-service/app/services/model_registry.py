@@ -19,6 +19,7 @@ class _ModelEntry:
         self.input_schema: list[str] = model_meta["input_schema"]
         self.sample_input: dict = model_meta["sample_input"]
         self.metrics: dict = model_meta["metrics"]
+        self.recommendation: dict | None = model_meta.get("recommendation")
         self.json_path = json_path
 
         # Lazy-loaded model object

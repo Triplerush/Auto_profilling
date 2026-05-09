@@ -7,9 +7,10 @@ const props = defineProps({
   analysisId: { type: String, required: true },
 })
 
-// Detect One-Hot dummy groups: columns that share a prefix and whose
-// sample values are all 0 or 1. Renders them as a single dropdown.
-// Anything else (continuous numerics, single binary flags) stays as number input.
+const recCfg = computed(() => props.model.recommendation || null)
+const recEnabled = computed(() => !!recCfg.value?.enabled)
+
+// --- One-hot group detection (existing logic) ---
 const groups = computed(() => {
   const candidates = {}
   for (const col of props.model.input_schema) {
@@ -40,8 +41,7 @@ const groupedCols = computed(() => {
   return set
 })
 
-// Ordered render list. Each group is emitted once at the position of its
-// first member in the original input_schema, so field order stays predictable.
+// Field classification: 'group' | 'binary' (single 0/1 flag) | 'log' (*_log → natural input) | 'number'
 const fields = computed(() => {
   const seen = new Set()
   const out = []
@@ -56,9 +56,21 @@ const fields = computed(() => {
           break
         }
       }
-    } else {
-      out.push({ kind: 'number', col })
+      continue
     }
+
+    if (col.endsWith('_log')) {
+      out.push({ kind: 'log', col, label: col.slice(0, -'_log'.length) })
+      continue
+    }
+
+    const sample = props.model.sample_input[col]
+    if (sample === 0 || sample === 1) {
+      out.push({ kind: 'binary', col })
+      continue
+    }
+
+    out.push({ kind: 'number', col })
   }
   return out
 })
@@ -70,7 +82,24 @@ const formValues = reactive(
   )
 )
 
-// prefix -> currently active column name for each group dropdown.
+// Natural-value mirror for *_log fields. We keep the log value in `formValues`
+// (what the API needs) and the human-readable value here.
+const naturalValues = reactive({})
+function initNaturalValues() {
+  for (const f of fields.value) {
+    if (f.kind === 'log') {
+      const logVal = props.model.sample_input[f.col] ?? 0
+      naturalValues[f.col] = Number(Math.exp(logVal).toFixed(2))
+    }
+  }
+}
+
+function onNaturalChange(col, raw) {
+  const n = Number(raw)
+  naturalValues[col] = n
+  formValues[col] = n > 0 ? Math.log(n) : 0
+}
+
 const groupSelection = reactive({})
 function initGroupSelection() {
   for (const [prefix, members] of Object.entries(groups.value)) {
@@ -78,7 +107,9 @@ function initGroupSelection() {
     groupSelection[prefix] = active ? active.col : members[0].col
   }
 }
+
 initGroupSelection()
+initNaturalValues()
 
 function onGroupChange(prefix, selectedCol) {
   for (const m of groups.value[prefix]) {
@@ -86,24 +117,35 @@ function onGroupChange(prefix, selectedCol) {
   }
 }
 
+function onBinaryChange(col, checked) {
+  formValues[col] = checked ? 1 : 0
+}
+
 function resetToSample() {
   for (const col of props.model.input_schema) {
     formValues[col] = props.model.sample_input[col] ?? 0
   }
   initGroupSelection()
+  initNaturalValues()
 }
 
 const loading = ref(false)
 const error = ref('')
 const result = ref(null)
+const recResult = ref(null)
 
-async function predict() {
+async function submit() {
   loading.value = true
   error.value = ''
   result.value = null
+  recResult.value = null
+
+  const path = recEnabled.value
+    ? `/v1/models/${props.analysisId}/recommend`
+    : `/v1/models/${props.analysisId}/predict`
 
   try {
-    const res = await fetch(api(`/v1/models/${props.analysisId}/predict`), {
+    const res = await fetch(api(path), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ features: { ...formValues } }),
@@ -112,7 +154,12 @@ async function predict() {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.detail || `Error ${res.status}`)
     }
-    result.value = await res.json()
+    const data = await res.json()
+    if (recEnabled.value) {
+      recResult.value = data
+    } else {
+      result.value = data
+    }
   } catch (e) {
     error.value = e.message
   } finally {
@@ -137,6 +184,10 @@ function formatMetricValue(value, key) {
   }
   return value.toFixed(3)
 }
+
+function humanizeBinary(col) {
+  return col.replace(/^is_/, '').replace(/_/g, ' ')
+}
 </script>
 
 <template>
@@ -144,10 +195,17 @@ function formatMetricValue(value, key) {
     <!-- Header -->
     <div class="flex items-center gap-3 mb-2">
       <div class="w-1 h-6 bg-emerald-500 rounded-full"></div>
-      <h3 class="text-xl font-bold text-heading">Probar Modelo</h3>
+      <h3 class="text-xl font-bold text-heading">
+        {{ recEnabled ? (recCfg.label || 'Recomendaciones') : 'Probar Modelo' }}
+      </h3>
     </div>
     <p class="text-sm text-muted mb-5 ml-4">
-      Ingresa los valores de las features para obtener una prediccion del modelo.
+      <template v-if="recEnabled">
+        Marca tus preferencias y obten las mejores recomendaciones del catalogo segun el modelo.
+      </template>
+      <template v-else>
+        Ingresa los valores de las features para obtener una prediccion del modelo.
+      </template>
     </p>
 
     <!-- Model metrics badges -->
@@ -166,7 +224,7 @@ function formatMetricValue(value, key) {
 
     <!-- Form -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-      <template v-for="field in fields" :key="field.kind === 'group' ? `g:${field.prefix}` : `n:${field.col}`">
+      <template v-for="field in fields" :key="field.kind === 'group' ? `g:${field.prefix}` : `${field.kind}:${field.col}`">
         <!-- Grouped One-Hot columns rendered as a single select -->
         <div v-if="field.kind === 'group'" class="flex flex-col gap-1.5">
           <label :for="`field-${field.prefix}`" class="text-xs font-medium text-muted truncate" :title="field.prefix">
@@ -184,7 +242,44 @@ function formatMetricValue(value, key) {
           </select>
         </div>
 
-        <!-- Ungrouped continuous / single binary fields -->
+        <!-- Single binary flag rendered as a checkbox -->
+        <div v-else-if="field.kind === 'binary'" class="flex flex-col gap-1.5">
+          <label :for="`field-${field.col}`" class="text-xs font-medium text-muted truncate" :title="field.col">
+            {{ field.col }}
+          </label>
+          <label
+            :for="`field-${field.col}`"
+            class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-[var(--bg-card-solid,rgb(30_41_59/0.8))] border border-[var(--border-card)] cursor-pointer hover:border-sky-500/50 transition-colors"
+          >
+            <input
+              :id="`field-${field.col}`"
+              type="checkbox"
+              :checked="formValues[field.col] === 1"
+              @change="onBinaryChange(field.col, $event.target.checked)"
+              class="w-4 h-4 accent-emerald-500 cursor-pointer"
+            />
+            <span class="text-heading capitalize">{{ humanizeBinary(field.col) }}</span>
+          </label>
+        </div>
+
+        <!-- *_log column rendered as natural value (we send Math.log of it) -->
+        <div v-else-if="field.kind === 'log'" class="flex flex-col gap-1.5">
+          <label :for="`field-${field.col}`" class="text-xs font-medium text-muted truncate flex items-center gap-1" :title="field.col">
+            {{ field.label }}
+            <span class="text-[10px] text-muted/70 normal-case">(valor natural)</span>
+          </label>
+          <input
+            :id="`field-${field.col}`"
+            type="number"
+            min="0"
+            step="any"
+            :value="naturalValues[field.col]"
+            @input="onNaturalChange(field.col, $event.target.value)"
+            class="w-full px-3 py-2 rounded-lg text-sm text-heading bg-[var(--bg-card-solid,rgb(30_41_59/0.8))] border border-[var(--border-card)] focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition-colors"
+          />
+        </div>
+
+        <!-- Default: continuous numeric input -->
         <div v-else class="flex flex-col gap-1.5">
           <label :for="`field-${field.col}`" class="text-xs font-medium text-muted truncate" :title="field.col">
             {{ field.col }}
@@ -200,10 +295,10 @@ function formatMetricValue(value, key) {
       </template>
     </div>
 
-    <!-- Predict button -->
+    <!-- Submit -->
     <div class="flex items-center gap-4 mb-6">
       <button
-        @click="predict"
+        @click="submit"
         :disabled="loading"
         class="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-semibold text-sm transition-colors cursor-pointer"
       >
@@ -214,7 +309,7 @@ function formatMetricValue(value, key) {
         <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
-        {{ loading ? 'Prediciendo...' : 'Predecir' }}
+        {{ loading ? (recEnabled ? 'Buscando...' : 'Prediciendo...') : (recEnabled ? 'Recomendar' : 'Predecir') }}
       </button>
 
       <button
@@ -230,21 +325,67 @@ function formatMetricValue(value, key) {
       <p class="text-sm text-red-400">{{ error }}</p>
     </div>
 
-    <!-- Result -->
-    <div v-if="result" class="glass-card p-6 border-emerald-500/20 animate-slide-up">
+    <!-- Recommendation result -->
+    <div v-if="recResult" class="glass-card p-6 border-emerald-500/20 animate-slide-up">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-1 h-5 bg-emerald-500 rounded-full"></div>
+        <h4 class="text-sm font-semibold text-muted uppercase tracking-wider">{{ recResult.label || 'Recomendaciones' }}</h4>
+      </div>
+
+      <div class="flex items-baseline gap-2 mb-4">
+        <span class="text-xs text-muted">Rating predicho para tu seleccion:</span>
+        <span class="text-2xl font-bold text-emerald-400">{{ recResult.predicted_rating?.toFixed?.(2) ?? recResult.predicted_rating }}</span>
+        <span class="text-xs text-muted">/ 10</span>
+      </div>
+
+      <div v-if="recResult.user_categories && Object.keys(recResult.user_categories).length" class="flex flex-wrap gap-1.5 mb-4">
+        <span
+          v-for="(value, key) in recResult.user_categories"
+          :key="key"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-sky-500/10 text-sky-400 border border-sky-500/20"
+        >
+          <span class="text-muted/80">{{ key }}:</span> {{ value }}
+        </span>
+      </div>
+
+      <div class="space-y-2">
+        <div
+          v-for="(item, idx) in recResult.items"
+          :key="idx"
+          class="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-card-solid,rgb(30_41_59/0.6))] border border-[var(--border-card)] hover:border-emerald-500/30 transition-colors"
+        >
+          <span class="text-xl font-bold text-emerald-400 w-6 text-center">{{ idx + 1 }}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-heading truncate">{{ item.title }}</p>
+            <div class="flex flex-wrap gap-1.5 mt-1">
+              <span v-if="item.type" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-500/15 text-slate-300">{{ item.type }}</span>
+              <span v-if="item.genre" class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300">{{ item.genre }}</span>
+              <span v-if="item.platform" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300">{{ item.platform }}</span>
+              <span v-if="item.country" class="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300">{{ item.country }}</span>
+              <span v-if="item.language" class="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/15 text-pink-300">{{ item.language }}</span>
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <p class="text-lg font-bold text-heading">{{ item[recResult.rating_field]?.toFixed?.(1) ?? item[recResult.rating_field] }}</p>
+            <p class="text-[10px] text-muted">{{ item.match_count }}/{{ Object.keys(recResult.user_categories || {}).length }} match</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Predict result (legacy path for non-recommend models) -->
+    <div v-else-if="result" class="glass-card p-6 border-emerald-500/20 animate-slide-up">
       <div class="flex items-center gap-3 mb-4">
         <div class="w-1 h-5 bg-emerald-500 rounded-full"></div>
         <h4 class="text-sm font-semibold text-muted uppercase tracking-wider">Resultado</h4>
       </div>
 
       <div class="flex items-center gap-6 flex-wrap">
-        <!-- Prediction -->
         <div class="text-center">
           <p class="text-xs text-muted mb-1">Prediccion</p>
           <p class="text-3xl font-bold text-heading">{{ result.prediction }}</p>
         </div>
 
-        <!-- Confidence bar -->
         <div v-if="result.confidence != null" class="flex-1 min-w-[200px]">
           <div class="flex justify-between text-xs mb-1">
             <span class="text-muted">Confianza</span>
@@ -259,7 +400,6 @@ function formatMetricValue(value, key) {
           </div>
         </div>
 
-        <!-- Probability -->
         <div v-if="result.probability != null" class="text-center">
           <p class="text-xs text-muted mb-1">Probabilidad</p>
           <p class="text-lg font-semibold text-heading">{{ (result.probability * 100).toFixed(1) }}%</p>
