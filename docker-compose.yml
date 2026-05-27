@@ -35,7 +35,7 @@ services:
       - default
 
   # Proxy interno que agrupa las 3 rutas del sub-proyecto.
-  # NPM (en el Droplet) reenvia triplerush.tech/profiling/* a
+  # NPM (en el Droplet) reenvia profiling.triplerush.tech a
   # profiling_proxy:3080 usando la red compartida portfolio-net.
   # El mapeo 3080:3080 permite pruebas locales sin sudo ni choques
   # con el :80 del host; en produccion NPM accede via portfolio-net.
